@@ -15,3 +15,5 @@ mobile/ – Mobile application files
 shared/ – Shared resources
 db/ – Database-related files
 docs/ – Project documentation
+
+

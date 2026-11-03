@@ -138,8 +138,7 @@ BEGIN
                OR NEW.tag_id IS DISTINCT FROM OLD.tag_id
                OR NEW.description IS DISTINCT FROM OLD.description
                OR NEW.is_special IS DISTINCT FROM OLD.is_special
-               OR NEW.created_at IS DISTINCT FROM OLD.created_at
-               OR NEW.updated_at IS DISTINCT FROM OLD.updated_at THEN
+               OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
                 RAISE EXCEPTION 'WPT_ADJUST_LOCKED';
             END IF;
         END IF;

@@ -1,7 +1,24 @@
+
 import { router } from 'expo-router';
-import { Button, Text, View, StyleSheet } from 'react-native';
+import {
+  Button,
+  Text,
+  View,
+  StyleSheet,
+} from 'react-native';
+
+import { useSession } from '../../lib/session';
 
 export default function SourceScreen() {
+  const completeOnboarding = useSession(
+    (state) => state.completeOnboarding
+  );
+
+  const handleFinish = () => {
+    completeOnboarding();
+    router.replace('/home');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Add your first source</Text>
@@ -12,7 +29,7 @@ export default function SourceScreen() {
 
       <Button
         title="Finish setup"
-        onPress={() => router.replace('/home')}
+        onPress={handleFinish}
       />
     </View>
   );

@@ -24,6 +24,9 @@ BEGIN;
 DO $$
 DECLARE
     i INTEGER;
+    v_existing INTEGER;
+    v_others INTEGER;
+    v_add_others INTEGER;
 BEGIN
     --48 extra sources + 1 existing source = 49
     FOR i IN 1..48 LOOP
@@ -37,8 +40,19 @@ BEGIN
         );
     END LOOP;
 
-    -- 98 extra expense tags + 1 existing expense tag = 99
-    FOR i IN 1..98 LOOP
+    -- Fill up to 100 expense tags including "Others" (the 101st is
+    -- expected to be blocked). After migration 005 the account
+    -- already has default tags, so the number of extras is computed.
+    SELECT COUNT(*),
+           COUNT(*) FILTER (WHERE is_others = TRUE)
+    INTO v_existing, v_others
+    FROM public.tags
+    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'
+      AND type = 'expense';
+
+    v_add_others := CASE WHEN v_others = 0 THEN 1 ELSE 0 END;
+
+    FOR i IN 1..(100 - v_existing - v_add_others) LOOP
         INSERT INTO public.tags
             (user_id, type, name, colour)
         VALUES (
@@ -49,16 +63,25 @@ BEGIN
         );
     END LOOP;
 
-    -- Temporary Others tag for protection tests
-    INSERT INTO public.tags
-        (user_id, type, name, colour, is_others)
-    VALUES (
-        'bb65b43f-a85e-4098-be4f-307194966c8b',
-        'expense',
-        'Rule Test Others',
-        '#808080',
-        TRUE
-    );
+    -- Temporary Others tag for protection tests.
+    -- After migration 005 the account already has an "Others" tag,
+    -- so only create one when it is missing.
+    IF NOT EXISTS (
+        SELECT 1 FROM public.tags
+        WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'
+          AND type = 'expense'
+          AND is_others = TRUE
+    ) THEN
+        INSERT INTO public.tags
+            (user_id, type, name, colour, is_others)
+        VALUES (
+            'bb65b43f-a85e-4098-be4f-307194966c8b',
+            'expense',
+            'Rule Test Others',
+            '#808080',
+            TRUE
+        );
+    END IF;
 END;
 $$;
 
@@ -284,7 +307,8 @@ BEGIN
     BEGIN
         UPDATE public.tags
         SET name = 'Changed Others'
-        WHERE name = 'Rule Test Others'
+        WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'
+          AND type = 'expense'
           AND is_others = TRUE;
 
         RAISE EXCEPTION 'FAIL: Others tag rename was allowed';
@@ -308,7 +332,8 @@ DO $$
 BEGIN
     BEGIN
         DELETE FROM public.tags
-        WHERE name = 'Rule Test Others'
+        WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'
+          AND type = 'expense'
           AND is_others = TRUE;
 
         RAISE EXCEPTION 'FAIL: Others tag deletion was allowed';
@@ -421,9 +446,8 @@ DO $$
 BEGIN
     BEGIN
         INSERT INTO public.financial_sources
-            (user_id, type, name, opening_amount)
+            (type, name, opening_amount)
         VALUES (
-            'bb65b43f-a85e-4098-be4f-307194966c8b',
             'cash',
             'Amount Range Test',
             10000000000.00
@@ -511,13 +535,482 @@ END;
 $$;
 
 
+-- =========================================================
+-- TASK 6: Migration 005 tests
+-- User setup + source RPCs. Dedicated test user B.
+-- All fixture changes are rolled back at the end.
+-- =========================================================
+
+-- Test User B
+-- 11111111-1111-1111-1111-111111111111
+
+RESET ROLE;
+
 -- ---------------------------------------------------------
--- 18. Roll back all temporary test data
+-- 19. Sign-up trigger creates 1 settings row and 17 tags
+-- ---------------------------------------------------------
+
+INSERT INTO auth.users (id, email)
+VALUES ('11111111-1111-1111-1111-111111111111', 'task6-test@example.com');
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_settings
+        WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+          AND currency_code = 'INR'
+          AND theme = 'system'
+          AND onboarding_completed = FALSE
+    ) THEN
+        RAISE EXCEPTION 'FAIL: settings row missing or wrong values';
+    END IF;
+
+    RAISE NOTICE 'PASS: sign-up created the settings row';
+END;
+$$;
+
+DO $$
+DECLARE
+    v_tag_count INTEGER;
+    v_others_count INTEGER;
+    v_bad_tags INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_tag_count
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+    IF v_tag_count <> 17 THEN
+        RAISE EXCEPTION 'FAIL: expected 17 tags, found %', v_tag_count;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO v_others_count
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+      AND is_others = TRUE
+      AND is_default = TRUE
+      AND name = 'Others'
+      AND colour = 'grey';
+
+    IF v_others_count <> 2 THEN
+        RAISE EXCEPTION 'FAIL: expected 2 protected Others tags, found %', v_others_count;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO v_bad_tags
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+      AND (is_default = FALSE OR is_others NOT IN (FALSE, TRUE));
+
+    IF v_bad_tags <> 0 THEN
+        RAISE EXCEPTION 'FAIL: default tags missing is_default';
+    END IF;
+
+    RAISE NOTICE 'PASS: sign-up created 17 default tags with protected Others';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 20. setup_user is idempotent
+-- ---------------------------------------------------------
+
+SELECT private.setup_user('11111111-1111-1111-1111-111111111111'::uuid);
+SELECT private.setup_user('11111111-1111-1111-1111-111111111111'::uuid);
+
+DO $$
+DECLARE
+    v_settings_count INTEGER;
+    v_tag_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_settings_count
+    FROM public.user_settings
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+    SELECT COUNT(*) INTO v_tag_count
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+    IF v_settings_count <> 1 OR v_tag_count <> 17 THEN
+        RAISE EXCEPTION 'FAIL: idempotency broken (% settings, % tags)',
+            v_settings_count, v_tag_count;
+    END IF;
+
+    RAISE NOTICE 'PASS: setup_user is idempotent';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 21. Missing Others tag is recreated (EC-TAG-11)
+-- ---------------------------------------------------------
+
+SELECT set_config('wpt.account_delete', 'on', FALSE);
+
+DELETE FROM public.tags
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+  AND is_others = TRUE;
+
+SELECT private.setup_user('11111111-1111-1111-1111-111111111111'::uuid);
+
+SELECT set_config('wpt.account_delete', 'off', FALSE);
+
+DO $$
+DECLARE
+    v_others_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_others_count
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+      AND is_others = TRUE
+      AND name = 'Others'
+      AND colour = 'grey'
+      AND is_default = TRUE;
+
+    IF v_others_count <> 2 THEN
+        RAISE EXCEPTION 'FAIL: Others tags not recreated (found %)', v_others_count;
+    END IF;
+
+    RAISE NOTICE 'PASS: missing Others tags recreated';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 22. ensure_user_setup as authenticated: own user only,
+--     never duplicates anything
+-- ---------------------------------------------------------
+
+SET LOCAL ROLE authenticated;
+
+SELECT set_config(
+    'request.jwt.claim.sub',
+    '11111111-1111-1111-1111-111111111111',
+    TRUE
+);
+
+SELECT public.ensure_user_setup();
+
+DO $$
+DECLARE
+    v_tag_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_tag_count
+    FROM public.tags
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+    IF v_tag_count <> 17 THEN
+        RAISE EXCEPTION 'FAIL: ensure_user_setup changed the tag count to %',
+            v_tag_count;
+    END IF;
+
+    RAISE NOTICE 'PASS: ensure_user_setup does not duplicate data';
+END;
+$$;
+
+-- Existing user A: must not gain tags either
+SELECT set_config(
+    'request.jwt.claim.sub',
+    'bb65b43f-a85e-4098-be4f-307194966c8b',
+    TRUE
+);
+
+DO $$
+DECLARE
+    v_before INTEGER;
+    v_after INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_before
+    FROM public.tags
+    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'::uuid;
+
+    PERFORM public.ensure_user_setup();
+
+    SELECT COUNT(*) INTO v_after
+    FROM public.tags
+    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'::uuid;
+
+    IF v_after <> v_before THEN
+        RAISE EXCEPTION 'FAIL: ensure_user_setup added tags to user A (% -> %)',
+            v_before, v_after;
+    END IF;
+
+    RAISE NOTICE 'PASS: ensure_user_setup leaves existing users alone';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 23. create_first_source: created, then already_complete
+-- ---------------------------------------------------------
+
+-- The app saves the name in onboarding step 1 (ONB-02)
+-- before step 3 calls create_first_source.
+
+RESET ROLE;
+
+UPDATE public.user_settings
+SET name = 'Task 6 User'
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+SET LOCAL ROLE authenticated;
+
+SELECT set_config(
+    'request.jwt.claim.sub',
+    '11111111-1111-1111-1111-111111111111',
+    TRUE
+);
+
+DO $$
+DECLARE
+    v_result TEXT;
+    v_source_id UUID := gen_random_uuid();
+BEGIN
+    v_result := public.create_first_source(
+        v_source_id, 'cash', 'Task 6 Cash', 100
+    );
+
+    IF v_result <> 'created' THEN
+        RAISE EXCEPTION 'FAIL: expected created, got %', v_result;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.financial_sources
+        WHERE id = v_source_id
+          AND type = 'cash'
+          AND opening_amount = 100
+          AND current_amount = 100
+          AND user_id = '11111111-1111-1111-1111-111111111111'::uuid
+    ) THEN
+        RAISE EXCEPTION 'FAIL: first source not created correctly';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_settings
+        WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+          AND onboarding_completed = TRUE
+    ) THEN
+        RAISE EXCEPTION 'FAIL: onboarding not marked complete';
+    END IF;
+
+    RAISE NOTICE 'PASS: create_first_source created the first source';
+END;
+$$;
+
+DO $$
+DECLARE
+    v_result TEXT;
+    v_source_count INTEGER;
+BEGIN
+    v_result := public.create_first_source(
+        gen_random_uuid(), 'bank', 'Task 6 Bank', 0
+    );
+
+    IF v_result <> 'already_complete' THEN
+        RAISE EXCEPTION 'FAIL: expected already_complete, got %', v_result;
+    END IF;
+
+    SELECT COUNT(*) INTO v_source_count
+    FROM public.financial_sources
+    WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+    IF v_source_count <> 1 THEN
+        RAISE EXCEPTION 'FAIL: retry created extra sources (%)', v_source_count;
+    END IF;
+
+    RAISE NOTICE 'PASS: create_first_source is safe to retry';
+END;
+$$;
+
+-- Repair path: settings row missing (sign-up setup failed).
+-- The app calls ensure_user_setup (recreating the row), saves the
+-- name in onboarding step 1, then create_first_source completes it.
+
+RESET ROLE;
+
+DELETE FROM public.user_settings
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+SELECT private.setup_user('11111111-1111-1111-1111-111111111111'::uuid);
+
+UPDATE public.user_settings
+SET name = 'Task 6 User'
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+SET LOCAL ROLE authenticated;
+
+SELECT set_config(
+    'request.jwt.claim.sub',
+    '11111111-1111-1111-1111-111111111111',
+    TRUE
+);
+
+DO $$
+DECLARE
+    v_result TEXT;
+BEGIN
+    v_result := public.create_first_source(
+        gen_random_uuid(), 'bank', 'Task 6 Bank', 0
+    );
+
+    IF v_result <> 'created' THEN
+        RAISE EXCEPTION 'FAIL: expected created after repair, got %', v_result;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_settings
+        WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+          AND onboarding_completed = TRUE
+          AND currency_code = 'INR'
+          AND name = 'Task 6 User'
+    ) THEN
+        RAISE EXCEPTION 'FAIL: settings row not repaired';
+    END IF;
+
+    RAISE NOTICE 'PASS: onboarding completes after a settings repair';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 24. sources_with_stats: order + has_transactions (bin included)
+-- ---------------------------------------------------------
+
+-- User B now has: Task 6 Cash (cash), Task 6 Bank (bank).
+INSERT INTO public.financial_sources (type, name, opening_amount)
+VALUES ('bank', 'Alpha Bank', 500);
+
+INSERT INTO public.financial_sources (type, name, opening_amount, credit_limit)
+VALUES ('card', 'Zed Card', 300, 1000);
+
+-- One expense transaction on Task 6 Cash, using the Food tag
+INSERT INTO public.transactions
+    (type, amount, txn_date, source_id, tag_id)
+SELECT 'expense', 50, CURRENT_DATE, s.id, t.id
+FROM public.financial_sources s,
+     public.tags t
+WHERE s.name = 'Task 6 Cash'
+  AND s.user_id = '11111111-1111-1111-1111-111111111111'::uuid
+  AND t.user_id = s.user_id
+  AND t.type = 'expense'
+  AND t.name = 'Food';
+
+DO $$
+DECLARE
+    v_names TEXT;
+    v_txn_source TEXT;
+BEGIN
+    SELECT string_agg(name, ',') INTO v_names
+    FROM public.sources_with_stats();
+
+    -- bank first (alphabetical), then cash, then card
+    IF v_names <> 'Alpha Bank,Task 6 Bank,Task 6 Cash,Zed Card' THEN
+        RAISE EXCEPTION 'FAIL: sources_with_stats order wrong: %', v_names;
+    END IF;
+
+    SELECT name INTO v_txn_source
+    FROM public.sources_with_stats()
+    WHERE has_transactions = TRUE;
+
+    IF v_txn_source <> 'Task 6 Cash' THEN
+        RAISE EXCEPTION 'FAIL: has_transactions wrong (only % set)', v_txn_source;
+    END IF;
+
+    RAISE NOTICE 'PASS: sources_with_stats order and has_transactions';
+END;
+$$;
+
+-- Soft-deleted (bin) transactions still count (ARC-02)
+RESET ROLE;
+
+UPDATE public.transactions
+SET deleted_at = now()
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+SET LOCAL ROLE authenticated;
+
+SELECT set_config(
+    'request.jwt.claim.sub',
+    '11111111-1111-1111-1111-111111111111',
+    TRUE
+);
+
+DO $$
+DECLARE
+    v_bin_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_bin_count
+    FROM public.sources_with_stats()
+    WHERE has_transactions = TRUE;
+
+    IF v_bin_count <> 1 THEN
+        RAISE EXCEPTION 'FAIL: bin transaction not counted (%)', v_bin_count;
+    END IF;
+
+    RAISE NOTICE 'PASS: has_transactions includes the bin';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 25. source_totals: bank + cash separate from card (SRC-08)
+-- ---------------------------------------------------------
+
+DO $$
+DECLARE
+    v_bank_cash NUMERIC;
+    v_card NUMERIC;
+BEGIN
+    SELECT bank_cash_total, card_outstanding_total
+    INTO v_bank_cash, v_card
+    FROM public.source_totals();
+
+    -- Alpha Bank 500 + Task 6 Cash 100 = 600; Zed Card outstanding 300
+    IF v_bank_cash <> 600 OR v_card <> 300 THEN
+        RAISE EXCEPTION 'FAIL: totals expected 600/300, got %/%',
+            v_bank_cash, v_card;
+    END IF;
+
+    RAISE NOTICE 'PASS: source_totals returns bank+cash and card separately';
+END;
+$$;
+
+-- Archived sources are excluded
+RESET ROLE;
+
+UPDATE public.financial_sources
+SET is_archived = TRUE
+WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid
+  AND name = 'Alpha Bank';
+
+SET LOCAL ROLE authenticated;
+
+SELECT set_config(
+    'request.jwt.claim.sub',
+    '11111111-1111-1111-1111-111111111111',
+    TRUE
+);
+
+DO $$
+DECLARE
+    v_bank_cash NUMERIC;
+    v_card NUMERIC;
+BEGIN
+    SELECT bank_cash_total, card_outstanding_total
+    INTO v_bank_cash, v_card
+    FROM public.source_totals();
+
+    IF v_bank_cash <> 100 OR v_card <> 300 THEN
+        RAISE EXCEPTION 'FAIL: archived sources included (%/%)',
+            v_bank_cash, v_card;
+    END IF;
+
+    RAISE NOTICE 'PASS: source_totals excludes archived sources';
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 26. Roll back all temporary test data
 -- ---------------------------------------------------------
 
 RESET ROLE;
 
 ROLLBACK;
 
-SELECT 'TASK 5 RULE TESTS COMPLETED - ALL CHANGES ROLLED BACK'
+SELECT 'TASK 5 + TASK 6 RULE TESTS COMPLETED - ALL CHANGES ROLLED BACK'
 AS result;

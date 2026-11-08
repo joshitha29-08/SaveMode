@@ -18,6 +18,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
+    -- Prevent simultaneous setup for the same user.
+    PERFORM pg_catalog.pg_advisory_xact_lock(
+        pg_catalog.hashtextextended(p_user_id::text, 1)
+    );
     -- Step 1: settings row (currency INR, theme System, onboarding not complete)
     INSERT INTO public.user_settings (user_id, currency_code, theme)
     VALUES (p_user_id, 'INR', 'system')
@@ -162,25 +166,33 @@ BEGIN
     FROM public.user_settings
     WHERE user_id = v_user;
 
-    -- Settings row missing (setup failed at sign-up): repair it first.
+    -- Settings row missing: app must call ensure_user_setup() first.
     IF v_done IS NULL THEN
-        PERFORM private.setup_user(v_user);
-
-        SELECT onboarding_completed
-        INTO v_done
-        FROM public.user_settings
-        WHERE user_id = v_user;
+        RAISE EXCEPTION 'WPT_USER_SETUP_REQUIRED';
     END IF;
 
     IF v_done THEN
         RETURN 'already_complete';
     END IF;
 
-    INSERT INTO public.financial_sources
+        INSERT INTO public.financial_sources
         (id, type, name, opening_amount, credit_limit)
     VALUES
         (p_id, p_type, p_name, p_opening, p_credit_limit)
     ON CONFLICT (id) DO NOTHING;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.financial_sources
+        WHERE id = p_id
+          AND user_id = v_user
+          AND type = p_type
+          AND name = p_name
+          AND opening_amount = p_opening
+          AND credit_limit IS NOT DISTINCT FROM p_credit_limit
+    ) THEN
+        RAISE EXCEPTION 'WPT_SOURCE_ID_CONFLICT';
+    END IF;
 
     UPDATE public.user_settings
     SET onboarding_completed = TRUE

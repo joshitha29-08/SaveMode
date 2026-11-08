@@ -21,6 +21,36 @@ BEGIN;
 -- 1. Create temporary fixtures as database owner
 -- ---------------------------------------------------------
 
+-- Create User A
+INSERT INTO auth.users (id, email)
+VALUES (
+    'bb65b43f-a85e-4098-be4f-307194966c8b',
+    'task5-test@example.com'
+);
+
+-- Create existing User A source
+INSERT INTO public.financial_sources
+    (id, user_id, type, name, opening_amount)
+VALUES (
+    '7a39cdb0-3775-4cd5-af25-db984700cbce',
+    'bb65b43f-a85e-4098-be4f-307194966c8b',
+    'cash',
+    'rls test cash',
+    0
+);
+
+-- Create existing User A expense tag
+INSERT INTO public.tags
+    (id, user_id, type, name, colour)
+VALUES (
+    'e19c94c8-6605-46e5-a9b8-37f766fef2e3',
+    'bb65b43f-a85e-4098-be4f-307194966c8b',
+    'expense',
+    'Rule Test Existing Tag',
+    '#808080'
+);
+
+
 DO $$
 DECLARE
     i INTEGER;
@@ -757,6 +787,31 @@ SELECT set_config(
     '11111111-1111-1111-1111-111111111111',
     TRUE
 );
+
+-- Test: Another user's source ID must not be accepted
+
+DO $$
+BEGIN
+    BEGIN
+        PERFORM public.create_first_source(
+            '7a39cdb0-3775-4cd5-af25-db984700cbce'::uuid,
+            'cash',
+            'Collision Test',
+            0
+        );
+
+        RAISE EXCEPTION 'FAIL: Foreign source ID was accepted';
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF SQLERRM = 'WPT_SOURCE_ID_CONFLICT' THEN
+                RAISE NOTICE 'PASS: Foreign source ID conflict blocked';
+            ELSE
+                RAISE;
+            END IF;
+    END;
+END;
+$$;
 
 DO $$
 DECLARE

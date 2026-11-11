@@ -1,14 +1,24 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/colors';
 import { NavigationText } from '../constants/navigation';
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const dark = useColorScheme() === 'dark';
+  const theme = dark ? Colors.dark : Colors.light;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{NavigationText.pageNotFound}</Text>
+    <View
+      style={StyleSheet.flatten([
+        styles.container,
+        { backgroundColor: theme.background },
+      ])}
+    >
+      <Text style={StyleSheet.flatten([styles.title, { color: theme.text }])}>
+        {NavigationText.pageNotFound}
+      </Text>
+
       <Pressable
         accessibilityRole="button"
         style={styles.button}
@@ -26,10 +36,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-    backgroundColor: Colors.light.background,
   },
   title: {
-    color: Colors.light.text,
     fontSize: 24,
     fontWeight: '600',
   },
@@ -40,7 +48,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: Colors.onPrimary,
     fontWeight: '600',
   },
 });

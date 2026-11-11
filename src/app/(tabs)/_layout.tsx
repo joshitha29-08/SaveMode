@@ -76,10 +76,11 @@ export default function TabsLayout() {
   const dark = useColorScheme() === 'dark';
   const desktop = width >= 1024;
 
-  const background = dark ? '#121212' : '#FFFFFF';
-  const foreground = dark ? '#FFFFFF' : '#171717';
-  const mutedColor = dark ? '#A3A3A3' : '#737373';
-  const border = dark ? '#303030' : '#E5E5E5';
+ const theme = dark ? Colors.dark : Colors.light;
+ const background = theme.background;
+ const foreground = theme.text;
+ const mutedColor = theme.muted;
+ const border = theme.border;
 
   return (
     <View

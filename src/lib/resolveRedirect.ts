@@ -35,7 +35,9 @@ export function resolveRedirect(
 ): string | null {
   const path = cleanPath(pathname);
 
-  if (gate.loading || ALWAYS_OPEN.has(path)) return null;
+  if (gate.loading || ALWAYS_OPEN.has(path)) {
+    return null;
+  }
 
   if (path === '/') {
     if (!gate.loggedIn) return '/welcome';
@@ -54,7 +56,11 @@ export function resolveRedirect(
   }
 
   if (gate.loggedIn && !gate.onboardingComplete) {
-    if (MAIN_PAGES.has(path) || GUEST_ONLY.has(path)) {
+    if (
+      MAIN_PAGES.has(path) ||
+      path === '/login' ||
+      path === '/signup'
+    ) {
       return `/onboarding/${gate.nextOnboardingStep}`;
     }
     return null;

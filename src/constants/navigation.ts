@@ -1,0 +1,15 @@
+export const NavigationText = {
+  appName: 'SaveMode',
+  home: 'Home',
+  transactions: 'Transactions',
+  addTransaction: 'Add transaction',
+  sources: 'Sources',
+  settings: 'Settings',
+  verify: 'Verify',
+  resetPassword: 'Reset password',
+  privacy: 'Privacy',
+  terms: 'Terms',onboarding: 'Onboarding',
+  deleteAccount: 'Delete account',
+  pageNotFound: 'Page not found',
+  goToHome: 'Go to Home',
+} as const;

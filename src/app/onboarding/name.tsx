@@ -1,8 +1,6 @@
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
-  Text,
   TextInput,
   Pressable,
   StyleSheet,
@@ -10,14 +8,21 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+
+import { default as Text } from '../../components/AppText';
 import { useSession } from '../../lib/session';
+import { useTheme } from '../../theme/theme-context';
+import type { ThemeColors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
 
 export default function NameScreen() {
-  const savedName = useSession(
-    (state) => state.onboardingData.name
-  );
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const savedName = useSession((state) => state.onboardingData.name);
+
   const updateOnboardingData = useSession(
-    (state) => state.updateOnboardingData
+    (state) => state.updateOnboardingData,
   );
 
   const [name, setName] = useState(savedName);
@@ -47,15 +52,19 @@ export default function NameScreen() {
     >
       <View style={styles.content}>
         <Text style={styles.step}>STEP 1 OF 3</Text>
-        <Text style={styles.title}>What's your name?</Text>
+
+        <Text style={styles.title}>What&apos;s your name?</Text>
+
         <Text style={styles.description}>
-          Welcome to SaveMode. Let's personalize your experience.
+          Welcome to SaveMode. Let&apos;s personalize your experience.
         </Text>
 
         <Text style={styles.label}>Your name</Text>
+
         <TextInput
           style={styles.input}
           placeholder="Enter your name"
+          placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={(value) => {
             setName(value);
@@ -68,10 +77,7 @@ export default function NameScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={styles.button}
-          onPress={handleContinue}
-        >
+        <Pressable style={styles.button} onPress={handleContinue}>
           <Text style={styles.buttonText}>Continue</Text>
         </Pressable>
       </View>
@@ -79,66 +85,70 @@ export default function NameScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  content: {
-    width: '100%',
-    maxWidth: 440,
-    alignSelf: 'center',
-  },
-  step: {
-    color: '#2563EB',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
-  },
-  description: {
-    color: '#64748B',
-    fontSize: 15,
-    lineHeight: 23,
-    marginBottom: 32,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
-    marginBottom: 8,
-  },
-  input: {
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  error: {
-    color: '#DC2626',
-    marginTop: 8,
-    fontSize: 13,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    content: {
+      width: '100%',
+      maxWidth: 440,
+      alignSelf: 'center',
+    },
+    step: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: '700',
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    description: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      lineHeight: 23,
+      marginBottom: 32,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      height: 52,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      fontSize: 16,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text,
+      backgroundColor: colors.inputBackground,
+    },
+    error: {
+      color: colors.error,
+      marginTop: 8,
+      fontSize: 13,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      padding: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginTop: 28,
+    },
+    buttonText: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
+}

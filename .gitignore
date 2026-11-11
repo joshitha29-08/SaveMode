@@ -46,3 +46,6 @@ example
 .env
 .env.*
 !.env.example
+
+# Local setup helper
+setup3.js

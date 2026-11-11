@@ -1,9 +1,5 @@
-
 import { create } from 'zustand';
-import {
-  persist,
-  createJSONStorage,
-} from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -33,11 +29,7 @@ export type Source = {
 
 type NewSource = Omit<Source, 'id'>;
 
-export type TransactionType =
-  | 'income'
-  | 'expense'
-  | 'transfer'
-  | 'adjustment';
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'adjustment';
 
 export type Transaction = {
   id: string;
@@ -89,9 +81,7 @@ const createSource = (data: NewSource): Source => ({
   id: `source-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 });
 
-const createTransaction = (
-  data: NewTransaction,
-): Transaction => ({
+const createTransaction = (data: NewTransaction): Transaction => ({
   ...data,
   id: `transaction-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 });
@@ -147,10 +137,7 @@ export const useSession = create<SessionState>()(
       login: (step = ONBOARDING_DONE) =>
         set({
           isLoggedIn: true,
-          onboardingStep: Math.max(
-            0,
-            Math.min(step, ONBOARDING_DONE),
-          ),
+          onboardingStep: Math.max(0, Math.min(step, ONBOARDING_DONE)),
         }),
 
       updateOnboardingData: (data) =>
@@ -163,10 +150,7 @@ export const useSession = create<SessionState>()(
 
       finishOnboardingStep: () =>
         set((state) => ({
-          onboardingStep: Math.min(
-            state.onboardingStep + 1,
-            ONBOARDING_DONE,
-          ),
+          onboardingStep: Math.min(state.onboardingStep + 1, ONBOARDING_DONE),
         })),
 
       completeOnboarding: () =>
@@ -175,9 +159,7 @@ export const useSession = create<SessionState>()(
           const sourceName = data.sourceName.trim();
 
           const alreadyExists = state.sources.some(
-            (source) =>
-              source.name.toLowerCase() ===
-              sourceName.toLowerCase(),
+            (source) => source.name.toLowerCase() === sourceName.toLowerCase(),
           );
 
           const sources =
@@ -193,11 +175,11 @@ export const useSession = create<SessionState>()(
                         : data.initialBalance,
                     creditLimit:
                       data.sourceType === 'credit_card'
-                        ? data.creditLimit ?? 0
+                        ? (data.creditLimit ?? 0)
                         : 0,
                     outstanding:
                       data.sourceType === 'credit_card'
-                        ? data.outstanding ?? 0
+                        ? (data.outstanding ?? 0)
                         : 0,
                   }),
                 ]
@@ -219,18 +201,13 @@ export const useSession = create<SessionState>()(
 
       addSource: (source) =>
         set((state) => ({
-          sources: [
-            ...state.sources,
-            createSource(source),
-          ],
+          sources: [...state.sources, createSource(source)],
         })),
 
       updateSource: (id, data) =>
         set((state) => ({
           sources: state.sources.map((source) =>
-            source.id === id
-              ? { ...source, ...data }
-              : source,
+            source.id === id ? { ...source, ...data } : source,
           ),
         })),
 
@@ -249,9 +226,7 @@ export const useSession = create<SessionState>()(
         }
 
         set((currentState) => ({
-          sources: currentState.sources.filter(
-            (source) => source.id !== id,
-          ),
+          sources: currentState.sources.filter((source) => source.id !== id),
         }));
 
         return true;
@@ -259,10 +234,7 @@ export const useSession = create<SessionState>()(
 
       addTransaction: (transaction) =>
         set((state) => ({
-          transactions: [
-            ...state.transactions,
-            createTransaction(transaction),
-          ],
+          transactions: [...state.transactions, createTransaction(transaction)],
         })),
     }),
     {
@@ -280,23 +252,19 @@ export const useSession = create<SessionState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
 
-        const migratedSources: Source[] =
-          Array.isArray(state.sources)
-            ? state.sources
-            : state.onboardingData?.sourceName?.trim()
-              ? [
-                  createSource({
-                    name: state.onboardingData.sourceName.trim(),
-                    type: state.onboardingData.sourceType,
-                    openingBalance:
-                      state.onboardingData.initialBalance ?? 0,
-                    creditLimit:
-                      state.onboardingData.creditLimit ?? 0,
-                    outstanding:
-                      state.onboardingData.outstanding ?? 0,
-                  }),
-                ]
-              : [];
+        const migratedSources: Source[] = Array.isArray(state.sources)
+          ? state.sources
+          : state.onboardingData?.sourceName?.trim()
+            ? [
+                createSource({
+                  name: state.onboardingData.sourceName.trim(),
+                  type: state.onboardingData.sourceType,
+                  openingBalance: state.onboardingData.initialBalance ?? 0,
+                  creditLimit: state.onboardingData.creditLimit ?? 0,
+                  outstanding: state.onboardingData.outstanding ?? 0,
+                }),
+              ]
+            : [];
 
         useSession.setState({
           sources: migratedSources,

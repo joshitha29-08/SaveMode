@@ -1,13 +1,8 @@
-
 /**
  * Shared routing helpers for authentication and onboarding.
  */
 
-export const ONBOARDING_STEPS = [
-  'name',
-  'currency',
-  'source',
-] as const;
+export const ONBOARDING_STEPS = ['name', 'currency', 'source'] as const;
 
 export const ONBOARDING_DONE = ONBOARDING_STEPS.length;
 
@@ -23,9 +18,7 @@ export function nextOnboardingHref(step: number): any {
   return `/onboarding/${ONBOARDING_STEPS[step]}`;
 }
 
-export function safeRedirectPath(
-  redirect?: string | string[],
-): string {
+export function safeRedirectPath(redirect?: string | string[]): string {
   const path = Array.isArray(redirect) ? redirect[0] : redirect;
 
   if (

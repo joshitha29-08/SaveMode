@@ -1,5 +1,19 @@
-# i18n
+﻿# Internationalization
 
-The shared text file, en.json. All words the user sees must come from this file, never typed directly into screens (PRD G-UI-10).
+This folder contains localization resources for SaveMode.
 
-Owner: to be confirmed (Tech Arch 4).
+The planned English resource file is:
+
+`en.json`
+
+## Guidelines
+
+- Keep user-facing text organized in localization resources.
+- Use consistent translation keys.
+- Avoid duplicating translation values.
+- Keep key names understandable.
+- Follow PRD G-UI-10.
+
+The current implementation should be checked against the approved localization requirements before claiming that all screens use `en.json`.
+
+**Owner:** To be confirmed (Tech Arch 4).

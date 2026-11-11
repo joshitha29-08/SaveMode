@@ -1,6 +1,16 @@
-# .github
+﻿# GitHub Configuration
 
-GitHub settings for the repository, such as pull request templates and automatic checks.
-Purpose: to confirm in Tech Arch 4.
+This folder contains repository-level GitHub configuration.
 
-Owner: to be confirmed (Tech Arch 4).
+Examples include:
+
+- Pull request templates
+- Issue templates
+- GitHub Actions workflows
+- Repository automation configuration
+
+Keep repository workflows and templates organized here.
+
+**Purpose:** To be confirmed against Tech Arch 4.
+
+**Owner:** To be confirmed (Tech Arch 4).

@@ -1,12 +1,14 @@
-
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 
+import Text from '../../components/AppText';
 import PlaceholderScreen from '../../components/PlaceholderScreen';
 import { useSession } from '../../lib/session';
+import { useTheme } from '../../theme/theme-context';
 
 export default function Home() {
   const logout = useSession((state) => state.logout);
+  const { colors } = useTheme();
 
   const handleLogout = () => {
     logout();
@@ -15,8 +17,13 @@ export default function Home() {
 
   return (
     <PlaceholderScreen title="Home">
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
+      <Pressable
+        style={[styles.button, { backgroundColor: colors.error }]}
+        onPress={handleLogout}
+      >
+        <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+          Logout
+        </Text>
       </Pressable>
     </PlaceholderScreen>
   );
@@ -24,14 +31,12 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#DC2626',
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 8,
     marginTop: 24,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

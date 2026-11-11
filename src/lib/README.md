@@ -1,5 +1,19 @@
-# lib
+﻿# Shared Libraries
 
-Shared helper code, for example the session and routing helpers.
+This folder contains reusable application logic that is not tied to a single screen.
 
-Owner: to be confirmed (Tech Arch 4).
+Examples include:
+
+- Session management
+- Routing helpers
+- Shared utility functions
+- Application-level helpers
+
+## Guidelines
+
+- Keep shared logic independent of screen presentation.
+- Use TypeScript types for public interfaces.
+- Avoid duplicating feature-specific logic.
+- Document important helper behavior.
+
+**Owner:** To be confirmed (Tech Arch 4).

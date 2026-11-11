@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
-import { Button, Text, View, StyleSheet } from 'react-native';
+import { Button, View, StyleSheet } from 'react-native';
+
+import Text from '../../components/AppText';
 import { useSession } from '../../lib/session';
 
 export default function Login() {

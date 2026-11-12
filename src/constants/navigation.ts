@@ -11,5 +11,5 @@ export const NavigationText = {
   terms: 'Terms',onboarding: 'Onboarding',
   deleteAccount: 'Delete account',
   pageNotFound: 'Page not found',
-  goToHome: 'Go to Home',
+  goToHome: 'Go to Home',logOut: 'Log out',
 } as const;

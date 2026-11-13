@@ -44,3 +44,39 @@ Use the variable names specified in .env.example.
 - Never use the Supabase Secret Key or service_role key in the client application.
 - Keep .env.example limited to placeholder values.
 - Use only the approved public client key in the application.
+
+**## Cloudflare Pages Setup**
+
+SaveMode web application is hosted using Cloudflare Pages.
+
+**### Deployment Details**
+
+- Project Name: savemode
+- Hosting Platform: Cloudflare Pages
+- GitHub Repository: SaveMode
+- Production Branch: main
+- Build Command: `npx expo export -p web`
+- Build Output Directory: `dist`
+- Website URL: https://savemode.pages.dev/
+
+**### Deployment Process**
+
+1. The GitHub repository is connected to Cloudflare Pages.
+2. The main branch is selected as the production branch.
+3. Cloudflare automatically builds the application using the configured build command.
+4. The generated files from the dist folder are deployed to the website.
+5. Whenever changes are merged into the main branch, a new deployment is triggered.
+
+**### Application Routes**
+
+- `/verify` – Used for email verification.
+- `/reset-password` – Used for password recovery.
+
+**### Notes**
+
+- The Cloudflare URL is used as the fixed web address during development.
+- The `/verify` route has been checked.
+- The `/reset-password` route needs to be tested.
+- Final production hosting will be decided by WPT.
+- Custom SMTP configuration will be handled by WPT before the beta release.
+- No paid hosting or custom SMTP configuration is required at this stage.

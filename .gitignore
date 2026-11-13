@@ -28,21 +28,27 @@ yarn-error.*
 
 # macOS
 .DS_Store
+# Windows
+Thumbs.db
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Certificates
 *.pem
 
-# local env files
+# Local environment files
 .env*.local
-
-# typescript
-*.tsbuildinfo
-
-example
-
-# generated native folders
-/ios
-/android
-
-# Environment variables and secrets
 .env
 .env.*
 !.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# Generated native folders
+/ios
+/android
+
+example

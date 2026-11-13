@@ -1,0 +1,168 @@
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Switch,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+
+export default function Settings() {
+  const [notifications, setNotifications] = useState(true);
+  const [reminders, setReminders] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Settings</Text>
+      <Text style={styles.subtitle}>
+        Manage your app preferences
+      </Text>
+
+      <Text style={styles.heading}>Preferences</Text>
+
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View>
+            <Text style={styles.label}>Notifications</Text>
+            <Text style={styles.description}>
+              Receive app notifications
+            </Text>
+          </View>
+          <Switch
+            value={notifications}
+            onValueChange={setNotifications}
+          />
+        </View>
+
+        <View style={styles.line} />
+
+        <View style={styles.row}>
+          <View>
+            <Text style={styles.label}>Money Reminders</Text>
+            <Text style={styles.description}>
+              Get reminders about savings
+            </Text>
+          </View>
+          <Switch
+            value={reminders}
+            onValueChange={setReminders}
+          />
+        </View>
+
+        <View style={styles.line} />
+
+        <View style={styles.row}>
+          <View>
+            <Text style={styles.label}>Dark Mode</Text>
+            <Text style={styles.description}>
+              Change app appearance
+            </Text>
+          </View>
+          <Switch
+            value={darkMode}
+            onValueChange={setDarkMode}
+          />
+        </View>
+      </View>
+
+      <Text style={styles.heading}>Account</Text>
+
+      <View style={styles.card}>
+        <TouchableOpacity style={styles.option}>
+          <Text style={styles.label}>Profile</Text>
+          <Text style={styles.arrow}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.line} />
+
+        <TouchableOpacity style={styles.option}>
+          <Text style={styles.label}>Privacy Policy</Text>
+          <Text style={styles.arrow}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.line} />
+
+        <TouchableOpacity style={styles.option}>
+          <Text style={styles.label}>About App</Text>
+          <Text style={styles.arrow}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.footer}>
+        SaveMode - Date & Money Helpers
+      </Text>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    padding: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#243447',
+    marginTop: 20,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#7B8794',
+    marginTop: 6,
+    marginBottom: 25,
+  },
+  heading: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#243447',
+    marginBottom: 12,
+    marginTop: 10,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: 22,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 17,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#243447',
+  },
+  description: {
+    fontSize: 12,
+    color: '#8995A3',
+    marginTop: 5,
+  },
+  line: {
+    height: 1,
+    backgroundColor: '#EDF0F3',
+  },
+  option: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  arrow: {
+    fontSize: 24,
+    color: '#8995A3',
+  },
+  footer: {
+    textAlign: 'center',
+    color: '#8995A3',
+    fontSize: 12,
+    marginVertical: 25,
+  },
+});

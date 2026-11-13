@@ -1,0 +1,81 @@
+name: Direct Push Alert
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  check-direct-push:
+    name: Check for Direct Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify commits came from merged pull requests
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = context.payload.commits || [];
+            const directCommits = [];
+
+            for (const commit of commits) {
+              const response =
+                await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commit.id
+                });
+
+              const mergedIntoMain = response.data.some(pr =>
+                pr.merged_at !== null &&
+                pr.base.ref === 'main'
+              );
+
+              if (!mergedIntoMain) {
+                directCommits.push(commit.id);
+              }
+            }
+
+            if (directCommits.length === 0) {
+              core.info('All commits are associated with merged pull requests.');
+              return;
+            }
+
+            const labelName = 'direct-push';
+
+            const labels = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            if (!labels.data.some(label => label.name === labelName)) {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelName,
+                color: 'd73a4a',
+                description: 'Code pushed directly to main without a merged pull request'
+              });
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Direct push detected on main branch',
+              body: [
+                'A commit was pushed to main without being associated with a merged pull request.',
+                '',
+                'Affected commits:',
+                ...directCommits.map(sha => `- ${sha}`),
+                '',
+                'Please review this activity.'
+              ].join('\n'),
+              labels: [labelName]
+            });
+
+            core.setFailed('Direct push detected. An issue has been created.');

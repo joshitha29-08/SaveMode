@@ -1,6 +1,6 @@
-﻿# WPT 201 - A (SaveMode)
+﻿# SaveMode
 
-A privacy-focused personal expense management application built with Expo, React Native and TypeScript. Runs on Android 9+ and iOS 16.4+.
+Save Mode is a privacy-focused personal expense management application built with Expo, React Native and TypeScript. Runs on Android 9+ and iOS 16.4+.
 
 ## Prerequisites
 

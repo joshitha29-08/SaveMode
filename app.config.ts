@@ -1,7 +1,7 @@
 ﻿import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'WPT 201 - A',
+  name: 'Save Mode',
   slug: 'wpt-201-a',
   version: '1.0.0',
   scheme: 'wpt201a',

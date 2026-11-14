@@ -1,6 +1,6 @@
 ﻿# SaveMode
 
-Save Mode is a privacy-focused personal expense management application built with Expo, React Native and TypeScript. Runs on Android 9+ and iOS 16.4+.
+SaveMode is a privacy-focused personal expense management application built with Expo, React Native and TypeScript. The BRD and PRD specify Android 9+ and iOS 15.1+; the current Expo SDK 57 configuration requires a separate team decision because its supported iOS minimum is higher.
 
 ## Prerequisites
 
@@ -90,23 +90,23 @@ npm run format
 
 ## Project structure
 
-| Folder | Responsibility |
-| --- | --- |
-| `src/app` | Expo Router screens and navigation |
-| `src/components` | Shared UI components |
-| `src/constants` | App constants |
-| `src/data` | Data access and backend integration |
-| `src/features` | Feature-specific functionality |
-| `src/hooks` | Shared React hooks |
-| `src/i18n` | Localization resources |
-| `src/lib` | Shared helpers, session and routing |
-| `src/theme` | Colours, typography, spacing and radius tokens |
-| `src/types` | TypeScript types |
-| `src/__tests__` | Tests |
-| `supabase` | Database scripts and configuration |
-| `plugins` | Expo plugins |
-| `docs` | Project documentation |
-| `.github` | Repository workflows and templates |
+| Folder           | Responsibility                                 |
+| ---------------- | ---------------------------------------------- |
+| `src/app`        | Expo Router screens and navigation             |
+| `src/components` | Shared UI components                           |
+| `src/constants`  | App constants                                  |
+| `src/data`       | Data access and backend integration            |
+| `src/features`   | Feature-specific functionality                 |
+| `src/hooks`      | Shared React hooks                             |
+| `src/i18n`       | Localization resources                         |
+| `src/lib`        | Shared helpers, session and routing            |
+| `src/theme`      | Colours, typography, spacing and radius tokens |
+| `src/types`      | TypeScript types                               |
+| `src/__tests__`  | Tests                                          |
+| `supabase`       | Database scripts and configuration             |
+| `plugins`        | Expo plugins                                   |
+| `docs`           | Project documentation                          |
+| `.github`        | Repository workflows and templates             |
 
 ## Theme system
 

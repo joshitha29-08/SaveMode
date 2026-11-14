@@ -1,22 +1,22 @@
-﻿import type { ExpoConfig } from 'expo/config';
+import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'Save Mode',
+  name: 'SaveMode',
   slug: 'wpt-201-a',
   version: '1.0.0',
   scheme: 'wpt201a',
-  orientation: 'portrait',
+  orientation: 'default',
   userInterfaceStyle: 'automatic',
   icon: './assets/images/icon.png',
 
   ios: {
-    bundleIdentifier: 'in.whitepixeltechnologies.wpt201a',
+    bundleIdentifier: 'com.whitepixeltech.savemode',
     icon: './assets/expo.icon',
-    supportsTablet: false,
+    supportsTablet: true,
   },
 
   android: {
-    package: 'in.whitepixeltechnologies.wpt201a',
+    package: 'com.whitepixeltech.savemode',
     allowBackup: false,
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
@@ -27,7 +27,7 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
   },
   web: {
-    output: 'server',
+    output: 'single',
     favicon: './assets/images/favicon.png',
   },
 

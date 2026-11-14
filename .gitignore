@@ -7,7 +7,8 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native / Android / iOS build artifacts
+.gradle/
 .kotlin/
 *.orig.*
 *.jks
@@ -17,17 +18,17 @@ expo-env.d.ts
 *.key
 *.pem
 *.mobileprovision
+/ios
+/android
 
-# Metro
+# Metro and debug logs
 .metro-health-check*
-
-# Debug logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 *.log
 
-# Operating System
+# Operating system files
 .DS_Store
 Thumbs.db
 
@@ -35,14 +36,14 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+.env*.local
 
 # TypeScript
 *.tsbuildinfo
 
-# Generated native folders
-/ios
-/android
-
 # Supabase temporary files
 supabase/.branches/
 supabase/.temp/
+
+# Local setup helper
+setup3.js

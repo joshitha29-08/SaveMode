@@ -1,17 +1,18 @@
+import { brandColors, darkColors, lightColors } from '../theme/colors';
+
 export const Colors = {
-  primary: '#0F6E56',
-  accent: '#854F0B',
-  onPrimary: '#FFFFFF',
+  ...brandColors,
+  onPrimary: lightColors.onPrimary,
   light: {
-    background: '#FFFFFF',
-    text: '#171717',
-    muted: '#737373',
-    border: '#E5E5E5',
+    background: lightColors.background,
+    text: lightColors.text,
+    muted: lightColors.textMuted,
+    border: lightColors.border,
   },
   dark: {
-    background: '#121212',
-    text: '#FFFFFF',
-    muted: '#A3A3A3',
-    border: '#303030',
+    background: darkColors.background,
+    text: darkColors.text,
+    muted: darkColors.textMuted,
+    border: darkColors.border,
   },
 } as const;

@@ -15,12 +15,7 @@ const GUEST_ONLY = new Set([
   '/forgot-password',
 ]);
 
-const MAIN_PAGES = new Set([
-  '/home',
-  '/transactions',
-  '/sources',
-  '/settings',
-]);
+const MAIN_PAGES = new Set(['/home', '/transactions', '/sources', '/settings']);
 
 function cleanPath(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) {
@@ -56,11 +51,7 @@ export function resolveRedirect(
   }
 
   if (gate.loggedIn && !gate.onboardingComplete) {
-    if (
-      MAIN_PAGES.has(path) ||
-      path === '/login' ||
-      path === '/signup'
-    ) {
+    if (MAIN_PAGES.has(path) || path === '/login' || path === '/signup') {
       return `/onboarding/${gate.nextOnboardingStep}`;
     }
     return null;

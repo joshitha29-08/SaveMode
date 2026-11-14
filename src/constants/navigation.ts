@@ -8,8 +8,10 @@ export const NavigationText = {
   verify: 'Verify',
   resetPassword: 'Reset password',
   privacy: 'Privacy',
-  terms: 'Terms',onboarding: 'Onboarding',
+  terms: 'Terms',
+  onboarding: 'Onboarding',
   deleteAccount: 'Delete account',
   pageNotFound: 'Page not found',
-  goToHome: 'Go to Home',logOut: 'Log out',
+  goToHome: 'Go to Home',
+  logOut: 'Log out',
 } as const;

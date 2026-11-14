@@ -1,13 +1,21 @@
-import { StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { Colors } from '../constants/colors';
+import { StyleSheet, View } from 'react-native';
+import type { ReactNode } from 'react';
+import Text from './AppText';
+import { useTheme } from '../theme/theme-context';
 
-export default function PlaceholderScreen({ title }: { title: string }) {
-  const dark = useColorScheme() === 'dark';
-  const theme = dark ? Colors.dark : Colors.light;
+export default function PlaceholderScreen({
+  title,
+  children,
+}: {
+  title: string;
+  children?: ReactNode;
+}) {
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.text, { color: theme.text }]}>{title}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.text, { color: colors.text }]}>{title}</Text>
+      {children}
     </View>
   );
 }

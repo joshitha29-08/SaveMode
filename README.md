@@ -1,6 +1,9 @@
-﻿# SaveMode
 
-SaveMode is a privacy-focused personal expense management application built with Expo, React Native and TypeScript. The BRD and PRD specify Android 9+ and iOS 15.1+; the current Expo SDK 57 configuration requires a separate team decision because its supported iOS minimum is higher.
+# SaveMode
+
+SaveMode is a privacy-focused personal expense management application built with Expo, React Native and TypeScript.
+
+The BRD and PRD specify Android 9+ and iOS 15.1+. The current Expo SDK 57 configuration requires a separate team decision because its supported iOS minimum is higher.
 
 ## Prerequisites
 
@@ -9,42 +12,46 @@ SaveMode is a privacy-focused personal expense management application built with
 - Visual Studio Code or another code editor
 - Expo Go for testing on a compatible Android device
 
-## Getting started
+## Getting Started
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/joshitha29-08/SaveMode.git
 cd SaveMode
 ```
 
-### 2. Install dependencies
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Configure environment variables
+### 3. Configure Environment Variables
 
-Create your local environment file:
+Create your local environment file.
 
-Windows:
+**Windows:**
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Mac/Linux:
+**Mac/Linux:**
 
 ```bash
 cp .env.example .env
 ```
 
-Configure the Supabase values using the instructions below.
+Configure these variables in your `.env` file:
+
+- `EXPO_PUBLIC_SUPABASE_URL` — Your Supabase Project URL.
+- `EXPO_PUBLIC_SUPABASE_KEY` — Your Supabase Key.
+- `EXPO_PUBLIC_WEB_URL` — Your application website URL.
 
 Never commit `.env` or expose secret keys.
 
-## Running the application
+## Running the Application
 
 ### Web
 
@@ -71,7 +78,7 @@ npm start
 
 If the default port is busy, use the port displayed by Expo.
 
-## Development checks
+## Development Checks
 
 Run these checks before submitting changes:
 
@@ -88,27 +95,27 @@ To format project files:
 npm run format
 ```
 
-## Project structure
+## Project Structure
 
-| Folder           | Responsibility                                 |
-| ---------------- | ---------------------------------------------- |
-| `src/app`        | Expo Router screens and navigation             |
-| `src/components` | Shared UI components                           |
-| `src/constants`  | App constants                                  |
-| `src/data`       | Data access and backend integration            |
-| `src/features`   | Feature-specific functionality                 |
-| `src/hooks`      | Shared React hooks                             |
-| `src/i18n`       | Localization resources                         |
-| `src/lib`        | Shared helpers, session and routing            |
-| `src/theme`      | Colours, typography, spacing and radius tokens |
-| `src/types`      | TypeScript types                               |
-| `src/__tests__`  | Tests                                          |
-| `supabase`       | Database scripts and configuration             |
-| `plugins`        | Expo plugins                                   |
-| `docs`           | Project documentation                          |
-| `.github`        | Repository workflows and templates             |
+| Folder | Responsibility |
+|---|---|
+| `src/app` | Expo Router screens and navigation |
+| `src/components` | Shared UI components |
+| `src/constants` | App constants |
+| `src/data` | Data access and backend integration |
+| `src/features` | Feature-specific functionality |
+| `src/hooks` | Shared React hooks |
+| `src/i18n` | Localization resources |
+| `src/lib` | Shared helpers, session and routing |
+| `src/theme` | Colours, typography, spacing and radius tokens |
+| `src/types` | TypeScript types |
+| `src/__tests__` | Tests |
+| `supabase` | Database scripts and configuration |
+| `plugins` | Expo plugins |
+| `docs` | Project documentation |
+| `.github` | Repository workflows and templates |
 
-## Theme system
+## Theme System
 
 SaveMode supports three theme modes:
 
@@ -124,11 +131,11 @@ See `src/theme/README.md` for implementation guidance.
 
 The current palette is provisional until the official Design Pack v1.0 is available for verification.
 
-## Supabase configuration
+## Supabase Configuration
 
 SaveMode uses Supabase for backend and database functionality.
 
-### Getting access
+### Getting Access
 
 1. Request access to the SaveMode Supabase project from the project administrator.
 2. Open the Supabase Dashboard.
@@ -136,22 +143,61 @@ SaveMode uses Supabase for backend and database functionality.
 4. Obtain the approved Project URL and public client key.
 5. Add them to your local `.env` file.
 
-### Environment variables
+### Environment Variables
 
 Use the variable names defined in `.env.example`:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `EXPO_PUBLIC_SUPABASE_KEY`
+- `EXPO_PUBLIC_WEB_URL`
 
-### Security guidelines
+### Security Guidelines
 
 - Never commit `.env`.
 - Never expose Supabase Secret Keys or `service_role` keys in client code.
 - Keep `.env.example` limited to placeholder values.
 - Use only the approved public client key in the application.
 
+## Cloudflare Pages Setup
+
+SaveMode web application is hosted using Cloudflare Pages.
+
+### Deployment Details
+
+- Project Name: savemode
+- Hosting Platform: Cloudflare Pages
+- GitHub Repository: SaveMode
+- Production Branch: main
+- Build Command: `npx expo export -p web`
+- Build Output Directory: `dist`
+- Website URL: https://savemode.pages.dev/
+
+### Deployment Process
+
+1. The GitHub repository is connected to Cloudflare Pages.
+2. The main branch is selected as the production branch.
+3. Cloudflare automatically builds the application using the configured build command.
+4. The generated files from the dist folder are deployed to the website.
+5. Whenever changes are merged into the main branch, a new deployment is triggered.
+
+### Application Routes
+
+- `/verify` – Used for email verification.
+- `/reset-password` – Used for password recovery.
+
+### Notes
+
+- The Cloudflare URL is used as the fixed web address during development.
+- The `/verify` route has been checked.
+- The `/reset-password` route needs to be tested.
+- Final production hosting will be decided by WPT.
+- Custom SMTP configuration will be handled by WPT before the beta release.
+- No paid hosting or custom SMTP configuration is required at this stage.
+
 ## Documentation
 
 Each major project folder contains a README describing its responsibility.
 
 Project-specific requirements, architecture decisions and handover information belong in `docs`.
+```
+

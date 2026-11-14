@@ -1,239 +1,542 @@
 -- =========================================================
--- SaveMode - Task 4: RLS Isolation Tests
--- LOCAL DATABASE ONLY
--- All test data is rolled back.
+-- E4: REPEATABLE ROW LEVEL SECURITY TEST
+-- Creates two temporary Auth users and their own test data.
+-- Run as postgres in Supabase SQL Editor.
+-- All test data is rolled back at the end.
 -- =========================================================
 
 BEGIN;
 
--- User A and User B
--- User A: bb65b43f-a85e-4098-be4f-307194966c8b
--- User B: 4c9c4423-202f-466b-87d1-16c88863e977
+-- ---------------------------------------------------------
+-- 1. CREATE TWO TEMPORARY AUTH USERS
+-- The on_auth_user_created trigger creates their settings
+-- and default tags automatically.
+-- ---------------------------------------------------------
 
--- Existing fixtures
--- A source: 7a39cdb0-3775-4cd5-af25-db984700cbce
--- A tag:    e19c94c8-6605-46e5-a9b8-37f766fef2e3
--- B source: 5b35e8b3-b8fe-4822-9252-d22fc470cb48
-
--- 1. Prepare temporary User A records
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM public.user_settings
-        WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b'
-    ) THEN
-        RAISE EXCEPTION 'STOP: User A settings already exist';
-    END IF;
-
-    IF EXISTS (
-        SELECT 1 FROM public.transactions
-        WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-    ) THEN
-        RAISE EXCEPTION 'STOP: Test transaction already exists';
-    END IF;
-END $$;
-
-INSERT INTO public.user_settings (user_id, name, currency_code)
-VALUES (
-    'bb65b43f-a85e-4098-be4f-307194966c8b',
-    'RLS Test User A',
-    'INR'
+INSERT INTO auth.users (
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at,
+    is_anonymous
+)
+VALUES
+(
+    'a1000000-0000-4000-8000-000000000001',
+    'authenticated',
+    'authenticated',
+    'e4-user-a@test.invalid',
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    false
+),
+(
+    'b1000000-0000-4000-8000-000000000002',
+    'authenticated',
+    'authenticated',
+    'e4-user-b@test.invalid',
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    false
 );
+
+-- ---------------------------------------------------------
+-- 2. CREATE TEST SOURCES FOR BOTH USERS
+-- ---------------------------------------------------------
+
+INSERT INTO public.financial_sources (
+    id, user_id, type, name, opening_amount
+)
+VALUES
+(
+    'a2000000-0000-4000-8000-000000000001',
+    'a1000000-0000-4000-8000-000000000001',
+    'cash',
+    'E4 User A Cash',
+    1000
+),
+(
+    'b2000000-0000-4000-8000-000000000002',
+    'b1000000-0000-4000-8000-000000000002',
+    'cash',
+    'E4 User B Cash',
+    1000
+);
+
+-- ---------------------------------------------------------
+-- 3. CREATE ONE TRANSACTION FOR USER A
+-- Use the default Food expense tag created automatically.
+-- ---------------------------------------------------------
 
 INSERT INTO public.transactions (
-    id, user_id, type, amount, txn_date,
-    source_id, tag_id, description
+    id,
+    user_id,
+    type,
+    amount,
+    txn_date,
+    source_id,
+    tag_id,
+    description
 )
+SELECT
+    'a3000000-0000-4000-8000-000000000001',
+    'a1000000-0000-4000-8000-000000000001',
+    'expense',
+    100,
+    CURRENT_DATE,
+    'a2000000-0000-4000-8000-000000000001',
+    t.id,
+    'E4 temporary test transaction'
+FROM public.tags t
+WHERE t.user_id = 'a1000000-0000-4000-8000-000000000001'
+  AND t.type = 'expense'
+  AND t.name = 'Food';
+
+  -- Create a private tag for User A to test cross-user tag access
+INSERT INTO public.tags (id, user_id, type, name, colour)
 VALUES (
-    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    'bb65b43f-a85e-4098-be4f-307194966c8b',
-    'expense', 100, CURRENT_DATE,
-    '7a39cdb0-3775-4cd5-af25-db984700cbce',
-    'e19c94c8-6605-46e5-a9b8-37f766fef2e3',
-    'Temporary RLS test'
+    'a4000000-0000-4000-8000-000000000001',
+    'a1000000-0000-4000-8000-000000000001',
+    'expense',
+    'E4 Private Tag',
+    'red'
 );
 
--- 2. Authenticate as User B
+
+-- Verify that both users were automatically set up.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_settings
+        WHERE user_id = 'a1000000-0000-4000-8000-000000000001'
+    ) THEN
+        RAISE EXCEPTION 'FAIL: User A settings missing';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_settings
+        WHERE user_id = 'b1000000-0000-4000-8000-000000000002'
+    ) THEN
+        RAISE EXCEPTION 'FAIL: User B settings missing';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.transactions
+        WHERE id = 'a3000000-0000-4000-8000-000000000001'
+    ) THEN
+        RAISE EXCEPTION 'FAIL: User A transaction missing';
+    END IF;
+
+        IF NOT EXISTS (
+        SELECT 1 FROM public.tags
+        WHERE id = 'a4000000-0000-4000-8000-000000000001'
+    ) THEN
+        RAISE EXCEPTION 'FAIL: User A private tag missing';
+    END IF;
+
+END;
+$$;
+
+
+-- ---------------------------------------------------------
+-- 4. ACT AS USER B
+-- ---------------------------------------------------------
+
 SET LOCAL ROLE authenticated;
 
 SELECT set_config(
     'request.jwt.claim.sub',
-    '4c9c4423-202f-466b-87d1-16c88863e977',
+    'b1000000-0000-4000-8000-000000000002',
     true
 );
 
 DO $$
+DECLARE
+    v_count INTEGER;
+    v_rows INTEGER;
 BEGIN
-    IF auth.uid() IS DISTINCT FROM
-       '4c9c4423-202f-466b-87d1-16c88863e977'::uuid THEN
-        RAISE EXCEPTION 'FAIL: User B authentication';
+
+    -- Confirm the simulated identity.
+    IF auth.uid() <>
+       'b1000000-0000-4000-8000-000000000002'::uuid THEN
+        RAISE EXCEPTION 'FAIL: Incorrect authenticated user';
     END IF;
-    RAISE NOTICE 'PASS: User B authenticated';
-END $$;
 
--- 3. User B cannot read User A records
-DO $$
-DECLARE
-    n INTEGER;
-BEGIN
-    SELECT COUNT(*) INTO n FROM public.user_settings
-    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b';
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: user_settings SELECT'; END IF;
+    RAISE NOTICE 'PASS: User B authentication context';
 
-    SELECT COUNT(*) INTO n FROM public.financial_sources
-    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b';
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: financial_sources SELECT'; END IF;
+    -- -----------------------------------------------------
+    -- 5. USER B CANNOT READ USER A DATA
+    -- -----------------------------------------------------
 
-    SELECT COUNT(*) INTO n FROM public.tags
-    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b';
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: tags SELECT'; END IF;
+    SELECT count(*) INTO v_count
+    FROM public.user_settings
+    WHERE user_id = 'a1000000-0000-4000-8000-000000000001';
 
-    SELECT COUNT(*) INTO n FROM public.transactions
-    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b';
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: transactions SELECT'; END IF;
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B read User A settings';
+    END IF;
 
-    RAISE NOTICE 'PASS: User B cannot read User A records';
-END $$;
+    SELECT count(*) INTO v_count
+    FROM public.financial_sources
+    WHERE id = 'a2000000-0000-4000-8000-000000000001';
 
--- 4. User B cannot insert User A settings
-DO $$
-BEGIN
-    BEGIN
-        INSERT INTO public.user_settings (user_id, name, currency_code)
-        VALUES (
-            'bb65b43f-a85e-4098-be4f-307194966c8b',
-            'Unauthorized', 'INR'
-        );
-        RAISE EXCEPTION 'FAIL: User B inserted User A settings';
-    EXCEPTION
-        WHEN insufficient_privilege THEN
-            RAISE NOTICE 'PASS: User B settings INSERT denied';
-    END;
-END $$;
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B read User A source';
+    END IF;
 
--- 5. User B cannot update/delete User A rows
-DO $$
-DECLARE
-    n INTEGER;
-BEGIN
-    UPDATE public.user_settings SET name = 'Hacked'
-    WHERE user_id = 'bb65b43f-a85e-4098-be4f-307194966c8b';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: user_settings UPDATE'; END IF;
+    SELECT count(*) INTO v_count
+    FROM public.tags
+    WHERE user_id = 'a1000000-0000-4000-8000-000000000001';
 
-    UPDATE public.financial_sources SET name = 'Hacked'
-    WHERE id = '7a39cdb0-3775-4cd5-af25-db984700cbce';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: source UPDATE'; END IF;
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B read User A tags';
+    END IF;
+
+    SELECT count(*) INTO v_count
+    FROM public.transactions
+    WHERE id = 'a3000000-0000-4000-8000-000000000001';
+
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B read User A transaction';
+    END IF;
+
+    RAISE NOTICE 'PASS: SELECT isolation on all four user tables';
+
+    -- -----------------------------------------------------
+    -- 6. USER B CANNOT UPDATE USER A DATA
+    -- -----------------------------------------------------
+
+    UPDATE public.user_settings
+    SET name = 'Hacked'
+    WHERE user_id = 'a1000000-0000-4000-8000-000000000001';
+
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B updated User A settings';
+    END IF;
+
+    UPDATE public.financial_sources
+    SET name = 'Hacked'
+    WHERE id = 'a2000000-0000-4000-8000-000000000001';
+
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B updated User A source';
+    END IF;
+
+    UPDATE public.tags
+    SET colour = 'red'
+    WHERE user_id = 'a1000000-0000-4000-8000-000000000001'
+      AND name = 'Food'
+      AND type = 'expense';
+
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B updated User A tags';
+    END IF;
+
+    UPDATE public.transactions
+    SET description = 'Hacked'
+    WHERE id = 'a3000000-0000-4000-8000-000000000001';
+
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B updated User A transaction';
+    END IF;
+
+    RAISE NOTICE 'PASS: UPDATE isolation on all four user tables';
+
+    -- -----------------------------------------------------
+    -- 7. USER B CANNOT DELETE USER A DATA
+    -- -----------------------------------------------------
 
     DELETE FROM public.financial_sources
-    WHERE id = '7a39cdb0-3775-4cd5-af25-db984700cbce';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: source DELETE'; END IF;
+    WHERE id = 'a2000000-0000-4000-8000-000000000001';
 
-    UPDATE public.tags SET name = 'Hacked'
-    WHERE id = 'e19c94c8-6605-46e5-a9b8-37f766fef2e3';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: tag UPDATE'; END IF;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B deleted User A source';
+    END IF;
 
     DELETE FROM public.tags
-    WHERE id = 'e19c94c8-6605-46e5-a9b8-37f766fef2e3';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: tag DELETE'; END IF;
+    WHERE user_id = 'a1000000-0000-4000-8000-000000000001'
+      AND name = 'Food'
+      AND type = 'expense';
 
-    UPDATE public.transactions SET description = 'Hacked'
-    WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: transaction UPDATE'; END IF;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B deleted User A tag';
+    END IF;
 
     DELETE FROM public.transactions
-    WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n <> 0 THEN RAISE EXCEPTION 'FAIL: transaction DELETE'; END IF;
+    WHERE id = 'a3000000-0000-4000-8000-000000000001';
 
-    RAISE NOTICE 'PASS: User B cannot update/delete User A records';
-END $$;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
 
--- 6. User B cannot link User A source or tag
-DO $$
-BEGIN
+    IF v_rows <> 0 THEN
+        RAISE EXCEPTION 'FAIL: User B deleted User A transaction';
+    END IF;
+
+    RAISE NOTICE 'PASS: DELETE isolation on source, tag and transaction';
+
+    -- User settings intentionally has no DELETE permission.
     BEGIN
-        INSERT INTO public.transactions (
-            type, amount, txn_date, source_id, tag_id, description
-        )
-        VALUES (
-            'expense', 50, CURRENT_DATE,
-            '7a39cdb0-3775-4cd5-af25-db984700cbce',
-            'e19c94c8-6605-46e5-a9b8-37f766fef2e3',
-            'Cross-user source test'
-        );
-        RAISE EXCEPTION 'FAIL: Cross-user source accepted';
-    EXCEPTION
-        WHEN SQLSTATE 'P0001' THEN
-            IF SQLERRM <> 'WPT_SOURCE_UNAVAILABLE' THEN RAISE; END IF;
-            RAISE NOTICE 'PASS: Cross-user source blocked';
-    END;
+        DELETE FROM public.user_settings
+        WHERE user_id = 'a1000000-0000-4000-8000-000000000001';
 
-    BEGIN
-        INSERT INTO public.transactions (
-            type, amount, txn_date, source_id, tag_id, description
-        )
-        VALUES (
-            'expense', 50, CURRENT_DATE,
-            '5b35e8b3-b8fe-4822-9252-d22fc470cb48',
-            'e19c94c8-6605-46e5-a9b8-37f766fef2e3',
-            'Cross-user tag test'
-        );
-        RAISE EXCEPTION 'FAIL: Cross-user tag accepted';
-    EXCEPTION
-        WHEN SQLSTATE '23503' THEN
-            RAISE NOTICE 'PASS: Cross-user tag blocked';
-    END;
-END $$;
+        RAISE EXCEPTION 'FAIL: User B unexpectedly had settings DELETE access';
 
--- 7. apple_tokens inaccessible to authenticated users
-DO $$
-BEGIN
-    BEGIN
-        PERFORM * FROM public.apple_tokens;
-        RAISE EXCEPTION 'FAIL: apple_tokens SELECT allowed';
     EXCEPTION
         WHEN insufficient_privilege THEN
-            RAISE NOTICE 'PASS: apple_tokens SELECT denied';
+            RAISE NOTICE 'PASS: User B cannot DELETE user_settings';
+    END;
+
+    -- -----------------------------------------------------
+    -- 8. USER B CANNOT INSERT ROWS FOR USER A
+    -- -----------------------------------------------------
+
+    BEGIN
+        INSERT INTO public.financial_sources (
+            id, user_id, type, name, opening_amount
+        )
+        VALUES (
+            gen_random_uuid(),
+            'a1000000-0000-4000-8000-000000000001',
+            'cash',
+            'Unauthorized source',
+            100
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user source INSERT succeeded';
+
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'PASS: Cross-user source INSERT blocked';
+    END;
+
+    BEGIN
+        INSERT INTO public.tags (
+            id, user_id, type, name, colour
+        )
+        VALUES (
+            gen_random_uuid(),
+            'a1000000-0000-4000-8000-000000000001',
+            'expense',
+            'Unauthorized tag',
+            'red'
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user tag INSERT succeeded';
+
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'PASS: Cross-user tag INSERT blocked';
+    END;
+
+    BEGIN
+        INSERT INTO public.transactions (
+            id, user_id, type, amount, txn_date, source_id, tag_id
+        )
+        VALUES (
+            gen_random_uuid(),
+            'a1000000-0000-4000-8000-000000000001',
+            'expense',
+            50,
+            CURRENT_DATE,
+            'a2000000-0000-4000-8000-000000000001',
+            NULL
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user transaction INSERT succeeded';
+
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'PASS: Cross-user transaction INSERT blocked';
+    END;
+
+    -- user_settings has no INSERT permission.
+    BEGIN
+        INSERT INTO public.user_settings (user_id)
+        VALUES ('a1000000-0000-4000-8000-000000000001');
+
+        RAISE EXCEPTION 'FAIL: User B unexpectedly had settings INSERT access';
+
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'PASS: User B cannot INSERT user_settings';
+    END;
+
+    -- -----------------------------------------------------
+    -- 9. USER B CANNOT LINK A TRANSACTION TO USER A SOURCE
+    -- -----------------------------------------------------
+
+    BEGIN
+        INSERT INTO public.transactions (
+            id, type, amount, txn_date, source_id, tag_id
+        )
+        VALUES (
+            gen_random_uuid(),
+            'expense',
+            50,
+            CURRENT_DATE,
+            'a2000000-0000-4000-8000-000000000001',
+            (
+                SELECT id
+                FROM public.tags
+                WHERE user_id = auth.uid()
+                  AND type = 'expense'
+                  AND name = 'Food'
+                LIMIT 1
+            )
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user source link succeeded';
+
+    EXCEPTION
+        WHEN SQLSTATE 'P0001' THEN
+            IF SQLERRM <> 'WPT_SOURCE_UNAVAILABLE' THEN
+                RAISE;
+            END IF;
+
+            RAISE NOTICE 'PASS: User A source link rejected';
+    END;
+
+    -- -----------------------------------------------------
+    -- 10. USER B CANNOT LINK A TRANSACTION TO USER A TAG
+    -- -----------------------------------------------------
+
+    BEGIN
+        INSERT INTO public.transactions (
+            id, type, amount, txn_date, source_id, tag_id
+        )
+        VALUES (
+            gen_random_uuid(),
+            'expense',
+            50,
+            CURRENT_DATE,
+            'b2000000-0000-4000-8000-000000000002',
+            'a4000000-0000-4000-8000-000000000001'
+           
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user tag link succeeded';
+
+    EXCEPTION
+        WHEN foreign_key_violation THEN
+            RAISE NOTICE 'PASS: User A tag link rejected';
+    END;
+
+    -- -----------------------------------------------------
+    -- 11. USER B CANNOT USE USER A SOURCE AS TRANSFER TARGET
+    -- -----------------------------------------------------
+
+    BEGIN
+        INSERT INTO public.transactions (
+            id, type, amount, txn_date,
+            source_id, to_source_id
+        )
+        VALUES (
+            gen_random_uuid(),
+            'transfer',
+            50,
+            CURRENT_DATE,
+            'b2000000-0000-4000-8000-000000000002',
+            'a2000000-0000-4000-8000-000000000001'
+        );
+
+        RAISE EXCEPTION 'FAIL: Cross-user transfer target succeeded';
+
+    EXCEPTION
+        WHEN SQLSTATE 'P0001' THEN
+            IF SQLERRM <> 'WPT_SOURCE_UNAVAILABLE' THEN
+                RAISE;
+            END IF;
+
+            RAISE NOTICE 'PASS: Cross-user transfer target rejected';
+    END;
+
+    -- -----------------------------------------------------
+    -- 12. APPLE TOKENS MUST HAVE NO AUTHENTICATED ACCESS
+    -- -----------------------------------------------------
+
+    BEGIN
+        PERFORM * FROM public.apple_tokens;
+
+        RAISE EXCEPTION 'FAIL: apple_tokens SELECT was allowed';
+
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE NOTICE 'PASS: apple_tokens SELECT blocked';
     END;
 
     BEGIN
         INSERT INTO public.apple_tokens (user_id, refresh_token)
         VALUES (
-            '4c9c4423-202f-466b-87d1-16c88863e977',
+            auth.uid(),
             'temporary-test-token'
         );
-        RAISE EXCEPTION 'FAIL: apple_tokens INSERT allowed';
+
+        RAISE EXCEPTION 'FAIL: apple_tokens INSERT was allowed';
+
     EXCEPTION
         WHEN insufficient_privilege THEN
-            RAISE NOTICE 'PASS: apple_tokens INSERT denied';
+            RAISE NOTICE 'PASS: apple_tokens INSERT blocked';
     END;
 
     BEGIN
         UPDATE public.apple_tokens
-        SET refresh_token = 'temporary-test-token';
-        RAISE EXCEPTION 'FAIL: apple_tokens UPDATE allowed';
+        SET refresh_token = 'unauthorized'
+        WHERE user_id = auth.uid();
+
+        RAISE EXCEPTION 'FAIL: apple_tokens UPDATE was allowed';
+
     EXCEPTION
         WHEN insufficient_privilege THEN
-            RAISE NOTICE 'PASS: apple_tokens UPDATE denied';
+            RAISE NOTICE 'PASS: apple_tokens UPDATE blocked';
     END;
 
     BEGIN
-        DELETE FROM public.apple_tokens;
-        RAISE EXCEPTION 'FAIL: apple_tokens DELETE allowed';
+        DELETE FROM public.apple_tokens
+        WHERE user_id = auth.uid();
+
+        RAISE EXCEPTION 'FAIL: apple_tokens DELETE was allowed';
+
     EXCEPTION
         WHEN insufficient_privilege THEN
-            RAISE NOTICE 'PASS: apple_tokens DELETE denied';
+            RAISE NOTICE 'PASS: apple_tokens DELETE blocked';
     END;
-END $$;
 
--- 8. Restore owner and roll back all temporary data
+    RAISE NOTICE 'PASS: All E4 security checks completed';
+
+END;
+$$;
+
+-- ---------------------------------------------------------
+-- 13. CLEAN UP ALL TEMPORARY TEST DATA
+-- ---------------------------------------------------------
+
 RESET ROLE;
+
 ROLLBACK;
 
-SELECT 'RLS TEST SCRIPT COMPLETED - ALL CHANGES ROLLED BACK' AS result;
+SELECT 'E4 RLS TEST COMPLETED - ALL TEST DATA ROLLED BACK' AS result;

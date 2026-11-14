@@ -7,7 +7,7 @@ SaveMode is a privacy-focused personal expense management application.
 1. Clone the repository:
    git clone https://github.com/joshitha29-08/SaveMode.git
 2. Open the project folder:
-     cd Savemode
+     cd SaveMode
 
 ## Folder Overview
 web/ – Web application files
@@ -46,11 +46,11 @@ Use the variable names specified in .env.example.
 - Keep .env.example limited to placeholder values.
 - Use only the approved public client key in the application.
 
-**## Cloudflare Pages Setup**
+## Cloudflare Pages Setup
 
 SaveMode web application is hosted using Cloudflare Pages.
 
-**### Deployment Details**
+### Deployment Details
 
 - Project Name: savemode
 - Hosting Platform: Cloudflare Pages
@@ -60,7 +60,7 @@ SaveMode web application is hosted using Cloudflare Pages.
 - Build Output Directory: `dist`
 - Website URL: https://savemode.pages.dev/
 
-**### Deployment Process**
+### Deployment Process
 
 1. The GitHub repository is connected to Cloudflare Pages.
 2. The main branch is selected as the production branch.
@@ -68,12 +68,12 @@ SaveMode web application is hosted using Cloudflare Pages.
 4. The generated files from the dist folder are deployed to the website.
 5. Whenever changes are merged into the main branch, a new deployment is triggered.
 
-**### Application Routes**
+### Application Routes
 
 - `/verify` – Used for email verification.
 - `/reset-password` – Used for password recovery.
 
-**### Notes**
+### Notes
 
 - The Cloudflare URL is used as the fixed web address during development.
 - The `/verify` route has been checked.

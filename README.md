@@ -34,7 +34,8 @@ SaveMode uses Supabase for its backend and database.
 Add the following variables to your local .env file:
 
 - EXPO_PUBLIC_SUPABASE_URL — Your Supabase Project URL.
-- EXPO_PUBLIC_SUPABASE_ANON_KEY — Your Supabase public client key.
+- EXPO_PUBLIC_SUPABASE_KEY — Your Supabase Key.
+- EXPO_PUBLIC_WEB_URL — Your application website URL.
 
 Use the variable names specified in .env.example.
 

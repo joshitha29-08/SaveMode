@@ -6,13 +6,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../constants/colors';
 import { NavigationText } from '../../constants/navigation';
+import { useTheme } from '../../theme/theme-context';
 
 const places = [
   { label: NavigationText.home, path: '/home', icon: 'home' as const },
@@ -40,6 +39,7 @@ function NavigationLink({
   active,
   vertical = false,
   mutedColor,
+  activeColor,
 }: {
   label: string;
   path: string;
@@ -47,40 +47,40 @@ function NavigationLink({
   active: boolean;
   vertical?: boolean;
   mutedColor: string;
+  activeColor: string;
 }) {
-  const color = active ? Colors.primary : mutedColor;
+  const color = active ? activeColor : mutedColor;
   const router = useRouter();
   return (
-  <Pressable
-    accessibilityRole="link"
-    onPress={() => {
-  router.push(path as never);
-}}
-    style={StyleSheet.flatten([
-      styles.navLink,
-      vertical ? styles.verticalLink : undefined,
-    ])}
-  >
-    <Feather name={icon} size={20} color={color} />
-    <Text style={StyleSheet.flatten([styles.navLabel, { color }])}>
-      {label}
-    </Text>
-  </Pressable>
-);
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => {
+        router.push(path as never);
+      }}
+      style={StyleSheet.flatten([
+        styles.navLink,
+        vertical ? styles.verticalLink : undefined,
+      ])}
+    >
+      <Feather name={icon} size={20} color={color} />
+      <Text style={StyleSheet.flatten([styles.navLabel, { color }])}>
+        {label}
+      </Text>
+    </Pressable>
+  );
 }
 
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const dark = useColorScheme() === 'dark';
+  const { colors } = useTheme();
   const desktop = width >= 1024;
-
- const theme = dark ? Colors.dark : Colors.light;
- const background = theme.background;
- const foreground = theme.text;
- const mutedColor = theme.muted;
- const border = theme.border;
+  const background = colors.background;
+  const foreground = colors.text;
+  const mutedColor = colors.textMuted;
+  const border = colors.border;
+  const showAdd = pathname === '/home' || pathname === '/transactions';
 
   return (
     <View
@@ -96,7 +96,9 @@ export default function TabsLayout() {
             { borderRightColor: border },
           ])}
         >
-          <Text style={StyleSheet.flatten([styles.brand, { color: foreground }])}>
+          <Text
+            style={StyleSheet.flatten([styles.brand, { color: foreground }])}
+          >
             {NavigationText.appName}
           </Text>
 
@@ -106,6 +108,7 @@ export default function TabsLayout() {
               {...place}
               vertical
               mutedColor={mutedColor}
+              activeColor={colors.primary}
               active={pathname === place.path}
             />
           ))}
@@ -113,25 +116,27 @@ export default function TabsLayout() {
       )}
 
       <View style={styles.main}>
-        {desktop && (
+        {desktop && showAdd && (
           <View
             style={StyleSheet.flatten([
               styles.header,
               { borderBottomColor: border },
             ])}
           >
-            <Pressable
-              accessibilityRole="button"
-              style={StyleSheet.flatten([
-                styles.addButton,
-                { backgroundColor: Colors.primary },
-              ])}
-            >
-              <Feather name="plus" size={18} color="#FFFFFF" />
-              <Text style={styles.addButtonText}>
-                {NavigationText.addTransaction}
-              </Text>
-            </Pressable>
+            {showAdd && (
+              <Pressable
+                accessibilityRole="button"
+                style={StyleSheet.flatten([
+                  styles.addButton,
+                  { backgroundColor: colors.primary },
+                ])}
+              >
+                <Feather name="plus" size={18} color="#FFFFFF" />
+                <Text style={styles.addButtonText}>
+                  {NavigationText.addTransaction}
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -158,33 +163,39 @@ export default function TabsLayout() {
             <NavigationLink
               {...places[0]}
               mutedColor={mutedColor}
+              activeColor={colors.primary}
               active={pathname === places[0].path}
             />
             <NavigationLink
               {...places[1]}
               mutedColor={mutedColor}
+              activeColor={colors.primary}
               active={pathname === places[1].path}
             />
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={NavigationText.addTransaction}
-              style={StyleSheet.flatten([
-                styles.plusButton,
-                { backgroundColor: Colors.primary, borderColor: background },
-              ])}
-            >
-              <Feather name="plus" size={26} color="#FFFFFF" />
-            </Pressable>
+            {showAdd && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={NavigationText.addTransaction}
+                style={StyleSheet.flatten([
+                  styles.plusButton,
+                  { backgroundColor: colors.primary, borderColor: background },
+                ])}
+              >
+                <Feather name="plus" size={26} color="#FFFFFF" />
+              </Pressable>
+            )}
 
             <NavigationLink
               {...places[2]}
               mutedColor={mutedColor}
+              activeColor={colors.primary}
               active={pathname === places[2].path}
             />
             <NavigationLink
               {...places[3]}
               mutedColor={mutedColor}
+              activeColor={colors.primary}
               active={pathname === places[3].path}
             />
           </View>

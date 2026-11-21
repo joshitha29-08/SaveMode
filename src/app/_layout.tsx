@@ -25,8 +25,13 @@ function AppContent() {
 
     const currentGroup = segments[0] as string | undefined;
     const isRoot = !currentGroup;
+    // D4: '+not-found' must also be public so logged-out users see the 404
+    // screen instead of being redirected to Welcome.
     const isPublic =
-      isRoot || currentGroup === '(auth)' || currentGroup === '(public)';
+      isRoot ||
+      currentGroup === '(auth)' ||
+      currentGroup === '(public)' ||
+      currentGroup === '+not-found';
 
     if (!isLoggedIn) {
       if (!isPublic) {

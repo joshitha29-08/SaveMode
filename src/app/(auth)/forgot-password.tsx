@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Pressable,
@@ -10,12 +9,14 @@ import {
 import { Link } from 'expo-router';
 import { useSession } from '../../lib/session';
 import { useNetworkStatus } from '../../lib/useNetworkStatus';
+import { useTheme } from '../../theme/theme-context';
 import OfflineBanner from '../../components/ui/OfflineBanner';
 import { t } from '../../i18n';
 
 export default function ForgotPassword() {
   const { resetPassword } = useSession();
   const { isOnline } = useNetworkStatus();
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,30 +44,35 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const error = await resetPassword(normalizedEmail);
-
-      if (error) {
-        setMessage('Unable to send the reset link. Please try again.');
-        return;
-      }
-
+      // AUTH-21: The app always shows: "If an account exists for this email, we've sent a reset link."
+      await resetPassword(normalizedEmail);
       setSubmitted(true);
     } catch {
-      setMessage('Unable to send the reset link. Please try again.');
+      setSubmitted(true);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+    >
       <OfflineBanner visible={!isOnline} />
 
-      <Text style={styles.title}>Forgot password?</Text>
+      <Text style={[styles.title, { color: colors.text }]}>
+        Forgot password?
+      </Text>
 
       {message ? (
         <Text
-          style={styles.error}
+          style={[
+            styles.error,
+            { backgroundColor: colors.error + '18', color: colors.error },
+          ]}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
@@ -76,22 +82,34 @@ export default function ForgotPassword() {
 
       {submitted ? (
         <>
-          <Text style={styles.message}>
+          <Text style={[styles.message, { color: colors.textSecondary }]}>
             {t('info.reset.sent')}
           </Text>
-          <Link href="/(auth)/login" style={styles.link}>
+          <Link
+            href="/(auth)/login"
+            style={[styles.link, { color: colors.primary }]}
+          >
             Back to log in
           </Link>
         </>
       ) : (
         <>
-          <Text style={styles.message}>
-           Enter your email address and we&apos;ll send you a password reset link.
+          <Text style={[styles.message, { color: colors.textSecondary }]}>
+            Enter your email address and we&apos;ll send you a password reset
+            link.
           </Text>
 
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             placeholder="Email address"
+            placeholderTextColor={colors.textMuted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -102,17 +120,24 @@ export default function ForgotPassword() {
           />
 
           <Pressable
-            style={[styles.button, (!isOnline || loading) && styles.disabled]}
+            style={[
+              styles.button,
+              { backgroundColor: colors.primary },
+              (!isOnline || loading) && styles.disabled,
+            ]}
             onPress={handleReset}
             disabled={!isOnline || loading}
             accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>
+            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
               {loading ? 'Sending...' : 'Send reset link'}
             </Text>
           </Pressable>
 
-          <Link href="/(auth)/login" style={styles.link}>
+          <Link
+            href="/(auth)/login"
+            style={[styles.link, { color: colors.primary }]}
+          >
             Back to log in
           </Link>
         </>
@@ -127,46 +152,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 18,
-    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#111111',
   },
   message: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#555555',
   },
   error: {
-    color: '#B42318',
-    backgroundColor: '#FEF3F2',
     padding: 12,
     borderRadius: 8,
+    fontSize: 14,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
-    color: '#111111',
   },
   button: {
-    backgroundColor: '#111111',
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
   },
   disabled: { opacity: 0.5 },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
   link: {
-    color: '#2563EB',
     fontWeight: '600',
   },
 });

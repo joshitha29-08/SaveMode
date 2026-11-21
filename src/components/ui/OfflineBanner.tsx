@@ -1,39 +1,38 @@
-
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { t } from '../../i18n';
-import { useAppTheme } from '../../lib/theme';
+import { useTheme } from '../../theme/theme-context';
 
 type OfflineBannerProps = {
   visible: boolean;
 };
 
 export default function OfflineBanner({ visible }: OfflineBannerProps) {
-  const { isDark } = useAppTheme();
+  // D3: Use theme warning token and computed background from theme colors.
+  const { colors, resolvedMode } = useTheme();
+  const isDark = resolvedMode === 'dark';
 
   if (!visible) return null;
 
-  const color = isDark ? '#FFD166' : '#664500';
+  // warning token: light='#854F0B' (brown-amber), dark='#EF9F27' (amber).
+  // Background: a tinted surface derived from warning hue.
+  const bannerBg = isDark ? '#3D3218' : '#FFF1CC';
+  const textColor = colors.warning;
 
   return (
     <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDark ? '#3D3218' : '#FFF1CC',
-        },
-      ]}
+      style={[styles.container, { backgroundColor: bannerBg }]}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
     >
       <MaterialCommunityIcons
         name="wifi-off"
         size={18}
-        color={color}
+        color={textColor}
         accessible={false}
       />
 
-      <Text style={[styles.message, { color }]}>
+      <Text style={[styles.message, { color: textColor }]}>
         {t('info.offline')}
       </Text>
     </View>

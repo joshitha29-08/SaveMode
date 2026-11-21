@@ -1,27 +1,28 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo, useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useState, useMemo } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
+  View,
   Text,
   TextInput,
-  View,
+  Pressable,
+  StyleSheet,
+  Switch,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { useForm, Controller, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Colors } from '../../constants/colors';
-import { t } from '../../i18n';
-import { cleanPastedAmount, formatAmount } from '../../lib/money';
-import { useSession } from '../../lib/session';
-import { supabase } from '../../lib/supabase';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/theme';
 import { useSafeSave } from '../../lib/useSafeSave';
+import { useSession } from '../../lib/session';
+import { supabase } from '../../lib/supabase';
+import { generateUUID } from '../../lib/uuid';
+import { t } from '../../i18n';
+import { formatAmount, cleanPastedAmount } from '../../lib/money';
 import ConfirmSheet from '../ui/ConfirmSheet';
 import InlineError from '../ui/InlineError';
+import { Colors } from '../../constants/colors';
 
 const MAX_SOURCES = 50;
 
@@ -235,12 +236,13 @@ export default function SourceForm({
         return error;
       }
 
+      const newId = generateUUID();
       const { error } = await supabase.from('financial_sources').insert({
+        id: newId,
         type: values.type,
         name: values.name.trim(),
         opening_amount: finalOpening,
         credit_limit: finalCreditLimit,
-        is_archived: false,
       });
 
       return error;

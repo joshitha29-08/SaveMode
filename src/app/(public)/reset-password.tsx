@@ -8,12 +8,18 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { useSession } from '../../lib/session';
+import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../lib/useNetworkStatus';
+import { useTheme } from '../../theme/theme-context';
 import OfflineBanner from '../../components/ui/OfflineBanner';
+import { t } from '../../i18n';
+
+type ResetStatus = 'checking' | 'ready' | 'invalid';
 
 export default function ResetPassword() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     token_hash?: string | string[];
     token?: string | string[];
@@ -22,22 +28,14 @@ export default function ResetPassword() {
     error_description?: string | string[];
   }>();
 
-  const rawTokenHash = params.token_hash ?? params.token;
-  const tokenHash = Array.isArray(rawTokenHash)
-    ? rawTokenHash[0]
-    : rawTokenHash;
-
-  const rawType = params.type;
-  const type = Array.isArray(rawType) ? rawType[0] : rawType;
-
   const { updatePassword } = useSession();
   const { isOnline } = useNetworkStatus();
-  const router = useRouter();
+  const { colors } = useTheme();
 
-  const [verified, setVerified] = useState(false);
+  const [status, setStatus] = useState<ResetStatus>('checking');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   const hasMinLength = password.length >= 8;
@@ -46,70 +44,52 @@ export default function ResetPassword() {
   const hasNumber = /[0-9]/.test(password);
   const hasAllowedCharacters = /^[\x20-\x7E]*$/.test(password);
 
+  const isPasswordValid =
+    hasMinLength &&
+    hasMaxLength &&
+    hasLetter &&
+    hasNumber &&
+    hasAllowedCharacters;
+
   useEffect(() => {
     let active = true;
 
-    async function verifyLink() {
-      if (!isOnline) {
+    async function checkSessionOrToken() {
+      // 1. Direct query param error
+      if (params.error) {
         if (active) {
-          setLoading(false);
-          setVerified(false);
-          setMessage('Connect to the internet to verify this link.');
+          setStatus('invalid');
+          setMessage(t('info.link.expired'));
         }
         return;
       }
 
-      // Check query errors
-      const errorParam = Array.isArray(params.error)
-        ? params.error[0]
-        : params.error;
-      const errorDesc = Array.isArray(params.error_description)
-        ? params.error_description[0]
-        : params.error_description;
-      if (errorParam) {
-        if (active) {
-          setVerified(false);
-          setLoading(false);
-          setMessage(
-            errorDesc
-              ? decodeURIComponent(errorDesc)
-              : 'This reset link is invalid or expired. Request a new one.',
-          );
-        }
-        return;
-      }
-
-      // Check URL hash on web
+      // 2. Hash params on web (Supabase implicit / recovery flow)
       if (typeof window !== 'undefined' && window.location?.hash) {
         const hash = window.location.hash.substring(1);
         const hashParams = new URLSearchParams(hash);
 
-        const hashError = hashParams.get('error');
-        const hashErrorDesc = hashParams.get('error_description');
-        if (hashError) {
+        if (hashParams.get('error')) {
           if (active) {
-            setVerified(false);
-            setLoading(false);
-            setMessage(
-              hashErrorDesc
-                ? decodeURIComponent(hashErrorDesc)
-                : 'This reset link is invalid or expired. Request a new one.',
-            );
+            setStatus('invalid');
+            setMessage(t('info.link.expired'));
           }
           return;
         }
 
+        const hashType = hashParams.get('type');
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
-        if (accessToken && refreshToken) {
+
+        // Only accept if type is specifically recovery
+        if (hashType === 'recovery' && accessToken && refreshToken) {
           try {
             const { error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
             if (!sessionError && active) {
-              setVerified(true);
-              setLoading(false);
+              setStatus('ready');
               return;
             }
           } catch {
@@ -118,72 +98,62 @@ export default function ResetPassword() {
         }
       }
 
-      // Check token_hash / token
+      // 3. token_hash param (Supabase PKCE / email recovery link)
+      const rawTokenHash = params.token_hash ?? params.token;
+      const tokenHash = Array.isArray(rawTokenHash)
+        ? rawTokenHash[0]
+        : rawTokenHash;
+      const rawType = params.type;
+      const typeParam = Array.isArray(rawType) ? rawType[0] : rawType;
+
       if (tokenHash) {
-        const otpType = type === 'recovery' || !type ? 'recovery' : 'recovery';
-        setLoading(true);
-        setMessage('');
-
-        try {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: otpType,
-          });
-
+        // Enforce recovery type if provided; reject unexpected types
+        if (typeParam && typeParam !== 'recovery') {
           if (active) {
-            setVerified(!error);
-            setLoading(false);
-
-            if (error) {
-              setMessage(
-                'This reset link is invalid or expired. Request a new one.',
-              );
-            }
-          }
-          return;
-        } catch {
-          if (active) {
-            setVerified(false);
-            setLoading(false);
-            setMessage('Unable to verify this link. Please try again.');
+            setStatus('invalid');
+            setMessage(t('info.link.expired'));
           }
           return;
         }
-      }
 
-      // Check existing active session
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData?.session?.user && active) {
-          setVerified(true);
-          setLoading(false);
+        const otpType: EmailOtpType = 'recovery';
+
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: otpType,
+        });
+
+        if (!error && active) {
+          setStatus('ready');
           return;
         }
-      } catch {
-        // Fall through
+
+        if (active) {
+          setStatus('invalid');
+          setMessage(t('info.link.expired'));
+        }
+        return;
       }
 
+      // 4. Do NOT accept generic existing sessions - only genuine recovery links
       if (active) {
-        setVerified(false);
-        setLoading(false);
-        setMessage(
-          'This reset link is invalid or expired. Request a new one.',
-        );
+        setStatus('invalid');
+        setMessage(t('info.link.expired'));
       }
     }
 
-    void verifyLink();
+    void checkSessionOrToken();
 
     return () => {
       active = false;
     };
-  }, [tokenHash, type, isOnline, params.error, params.error_description]);
+  }, [params.token_hash, params.token, params.type, params.error]);
 
-  async function handleUpdate() {
+  async function handleUpdatePassword() {
     setMessage('');
 
     if (!isOnline) {
-      setMessage('Connect to the internet to update your password.');
+      setMessage(t('info.offline.save'));
       return;
     }
 
@@ -193,47 +163,48 @@ export default function ResetPassword() {
     }
 
     if (password !== confirmPassword) {
-      setMessage("Passwords don't match.");
+      setMessage('Passwords do not match.');
       return;
     }
-
-    if (!hasAllowedCharacters) {
-      setMessage('Use only English letters, numbers and keyboard symbols.');
-      return;
-    }
-
-    if (!hasMinLength || !hasMaxLength || !hasLetter || !hasNumber) {
-      setMessage('Use 8–64 characters, at least one letter and one number.');
+    if (!isPasswordValid) {
+      setMessage(t('err.password.rule'));
       return;
     }
 
     setLoading(true);
 
     try {
+      // AUTH-23: updatePassword updates user and explicitly signs out all other sessions
       const error = await updatePassword(password);
 
       if (error) {
-        setMessage('Unable to update your password. Please try again.');
+        setMessage(t('err.generic'));
         return;
       }
 
-      router.replace('/(auth)/login');
+      // User goes to Home, or onboarding if unfinished
+      router.replace('/');
     } catch {
-      setMessage('Something went wrong. Please try again.');
+      setMessage(t('err.generic'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <OfflineBanner visible={!isOnline} />
 
-      <Text style={styles.title}>Set new password</Text>
+      <Text style={[styles.title, { color: colors.text }]}>
+        {t('reset.title')}
+      </Text>
 
       {message ? (
         <Text
-          style={styles.message}
+          style={[
+            styles.message,
+            { backgroundColor: colors.error + '18', color: colors.error },
+          ]}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
@@ -241,16 +212,23 @@ export default function ResetPassword() {
         </Text>
       ) : null}
 
-      {loading && !verified ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0F6E56" />
-          <Text style={styles.loadingText}>Verifying your reset link...</Text>
-        </View>
-      ) : verified ? (
+      {status === 'checking' && (
+        <ActivityIndicator size="large" color={colors.primary} />
+      )}
+
+      {status === 'ready' && (
         <>
           <TextInput
-            style={styles.input}
-            placeholder="New password"
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
+            placeholder={t('reset.new_password')}
+            placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -258,12 +236,20 @@ export default function ResetPassword() {
             autoCorrect={false}
             autoComplete="new-password"
             maxLength={64}
-            accessibilityLabel="New password"
+            accessibilityLabel={t('reset.new_password')}
           />
 
           <TextInput
-            style={styles.input}
-            placeholder="Confirm new password"
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
+            placeholder={t('reset.confirm_password')}
+            placeholderTextColor={colors.textMuted}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -271,55 +257,83 @@ export default function ResetPassword() {
             autoCorrect={false}
             autoComplete="new-password"
             maxLength={64}
-            accessibilityLabel="Confirm new password"
+            accessibilityLabel={t('reset.confirm_password')}
           />
 
-          <View style={styles.checklist}>
-            <Text style={styles.checkTitle}>Password requirements</Text>
+          <View
+            style={[
+              styles.checklist,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}
+          >
+            <Text style={[styles.checkTitle, { color: colors.text }]}>
+              {t('reset.requirements')}
+            </Text>
             <Text
               style={
-                hasMinLength && hasMaxLength ? styles.valid : styles.invalid
+                hasMinLength && hasMaxLength
+                  ? { color: colors.success }
+                  : { color: colors.textMuted }
               }
             >
-              {hasMinLength && hasMaxLength ? '✓' : '○'} 8–64 characters
-            </Text>
-            <Text style={hasLetter ? styles.valid : styles.invalid}>
-              {hasLetter ? '✓' : '○'} At least one letter
-            </Text>
-            <Text style={hasNumber ? styles.valid : styles.invalid}>
-              {hasNumber ? '✓' : '○'} At least one number
+              {hasMinLength && hasMaxLength ? '✓' : '○'} {t('reset.req.length')}
             </Text>
             <Text
-              style={hasAllowedCharacters ? styles.valid : styles.invalid}
+              style={
+                hasLetter
+                  ? { color: colors.success }
+                  : { color: colors.textMuted }
+              }
             >
-              {hasAllowedCharacters ? '✓' : '○'} English letters and keyboard
-              symbols only
+              {hasLetter ? '✓' : '○'} {t('reset.req.letter')}
+            </Text>
+            <Text
+              style={
+                hasNumber
+                  ? { color: colors.success }
+                  : { color: colors.textMuted }
+              }
+            >
+              {hasNumber ? '✓' : '○'} {t('reset.req.number')}
+            </Text>
+            <Text
+              style={
+                hasAllowedCharacters
+                  ? { color: colors.success }
+                  : { color: colors.textMuted }
+              }
+            >
+              {hasAllowedCharacters ? '✓' : '○'} {t('reset.req.chars')}
             </Text>
           </View>
 
           <Pressable
-            style={[styles.button, (loading || !isOnline) && styles.disabled]}
-            onPress={handleUpdate}
-            disabled={loading || !isOnline}
+            style={[
+              styles.button,
+              { backgroundColor: colors.primary },
+              (!isOnline || loading) && styles.disabled,
+            ]}
+            onPress={handleUpdatePassword}
+            disabled={!isOnline || loading}
             accessibilityRole="button"
-            accessibilityState={{
-              disabled: loading || !isOnline,
-              busy: loading,
-            }}
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Updating password...' : 'Update password'}
+            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+              {loading ? t('reset.updating') : t('reset.update')}
             </Text>
           </Pressable>
         </>
-      ) : (
+      )}
+
+      {status === 'invalid' && (
         <Pressable
-          style={styles.backButton}
-          onPress={() => router.replace('/(auth)/forgot-password')}
           accessibilityRole="button"
-          accessibilityLabel="Request a new link"
+          accessibilityLabel={t('reset.request_new')}
+          onPress={() => router.replace('/(auth)/forgot-password')}
+          style={[styles.button, { backgroundColor: colors.primary }]}
         >
-          <Text style={styles.backButtonText}>Request a new link</Text>
+          <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+            {t('reset.request_new')}
+          </Text>
         </Pressable>
       )}
     </View>
@@ -332,79 +346,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#FFFFFF',
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#111111',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    padding: 32,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: '#666666',
+    textAlign: 'center',
   },
   message: {
-    color: '#B42318',
-    backgroundColor: '#FEF3F2',
     padding: 12,
     borderRadius: 8,
     fontSize: 14,
-    lineHeight: 20,
+    textAlign: 'center',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#111111',
   },
   checklist: {
     gap: 8,
     padding: 12,
-    backgroundColor: '#F7F7F7',
     borderRadius: 10,
   },
   checkTitle: {
     fontWeight: '700',
-    color: '#222222',
-  },
-  valid: {
-    color: '#16834A',
-  },
-  invalid: {
-    color: '#777777',
   },
   button: {
-    backgroundColor: '#0F6E56',
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 8,
   },
   disabled: {
     opacity: 0.5,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-  },
-  backButton: {
-    backgroundColor: '#0F6E56',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

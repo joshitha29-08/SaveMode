@@ -1,30 +1,37 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { Colors } from '../constants/colors';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSession } from '../lib/session';
+import { useTheme } from '../theme/theme-context';
 import { NavigationText } from '../constants/navigation';
 
 export default function NotFoundScreen() {
   const router = useRouter();
-  const dark = useColorScheme() === 'dark';
-  const theme = dark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
+  const { isLoggedIn } = useSession();
+
+  // D4-NOT-FOUND-CTA: navigate to Welcome when logged-out, Home when logged-in
+  const handleGoHome = () => {
+    if (isLoggedIn) {
+      router.replace('/home');
+    } else {
+      router.replace('/(auth)/welcome');
+    }
+  };
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.background },
-      ]}
-    >
-      <Text style={[styles.title, { color: theme.text }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>
         {NavigationText.pageNotFound}
       </Text>
 
       <Pressable
         accessibilityRole="button"
-        style={styles.button}
-        onPress={() => router.replace('/home')}
+        style={[styles.button, { backgroundColor: colors.primary }]}
+        onPress={handleGoHome}
       >
-        <Text style={styles.buttonText}>{NavigationText.goToHome}</Text>
+        <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+          {NavigationText.goToHome}
+        </Text>
       </Pressable>
     </View>
   );
@@ -43,12 +50,10 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 8,
-    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   buttonText: {
-    color: Colors.onPrimary,
     fontWeight: '600',
   },
 });

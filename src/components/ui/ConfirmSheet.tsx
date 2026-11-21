@@ -5,10 +5,10 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
   useWindowDimensions,
 } from 'react-native';
 import { t } from '../../i18n';
+import { useTheme } from '../../theme/theme-context';
 
 type ConfirmSheetProps = {
   visible: boolean;
@@ -37,12 +37,12 @@ export default function ConfirmSheet({
 }: ConfirmSheetProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
-  const isDark = useColorScheme() === 'dark';
+  const { colors } = useTheme();
 
-  const backgroundColor = isDark ? '#242424' : '#FFFFFF';
-  const textColor = isDark ? '#FFFFFF' : '#222222';
+  const backgroundColor = colors.surface;
+  const textColor = colors.text;
   const disabled = loading || confirmDisabled;
-  const confirmButtonBg = variant === 'primary' ? '#2457C5' : '#B42318';
+  const confirmButtonBg = variant === 'primary' ? colors.primary : colors.error;
 
   return (
     <Modal
@@ -65,10 +65,7 @@ export default function ConfirmSheet({
         >
           {!isDesktop && (
             <View
-              style={[
-                styles.handle,
-                { backgroundColor: isDark ? '#777777' : '#C8C8C8' },
-              ]}
+              style={[styles.handle, { backgroundColor: colors.border }]}
               accessible={false}
             />
           )}
@@ -78,12 +75,7 @@ export default function ConfirmSheet({
           </Text>
 
           {description ? (
-            <Text
-              style={[
-                styles.description,
-                { color: isDark ? '#A3A3A3' : '#666666' },
-              ]}
-            >
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
               {description}
             </Text>
           ) : null}
@@ -93,15 +85,10 @@ export default function ConfirmSheet({
               onPress={onKeepEditing}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel={
-                cancelLabel ?? t('confirm.discard.keep')
-              }
-              style={[
-                styles.cancelButton,
-                loading && styles.disabledButton,
-              ]}
+              accessibilityLabel={cancelLabel ?? t('confirm.discard.keep')}
+              style={[styles.cancelButton, loading && styles.disabledButton]}
             >
-              <Text style={styles.cancelText}>
+              <Text style={[styles.cancelText, { color: colors.primary }]}>
                 {cancelLabel ?? t('confirm.discard.keep')}
               </Text>
             </Pressable>
@@ -110,9 +97,7 @@ export default function ConfirmSheet({
               onPress={onDiscard}
               disabled={disabled}
               accessibilityRole="button"
-              accessibilityLabel={
-                confirmLabel ?? t('confirm.discard.discard')
-              }
+              accessibilityLabel={confirmLabel ?? t('confirm.discard.discard')}
               style={[
                 styles.confirmButton,
                 { backgroundColor: confirmButtonBg },
@@ -183,7 +168,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelText: {
-    color: '#2457C5',
+    // D3: color is applied inline from theme token (colors.primary).
     fontWeight: '600',
   },
   confirmButton: {

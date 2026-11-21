@@ -1,21 +1,20 @@
-
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { t } from '../../i18n';
+import { useTheme } from '../../theme/theme-context';
 
 type InlineErrorProps = {
   message?: string;
   onRetry?: () => void;
+  /** Kept for backwards compatibility — if omitted, resolved from ThemeContext */
   isDark?: boolean;
   variant?: 'error' | 'warning' | 'info' | 'success';
 };
 
+// Semantic bg/text pairs derived from theme tokens where possible.
+// These are fixed perceptual pairs; not every variant maps 1:1 to a single
+// ThemeColors field, so we keep explicit light/dark pairs here rather than
+// risking unreadable contrast with arbitrary accent values.
 const variantStyles = {
   error: {
     lightBg: '#FDECEC',
@@ -50,15 +49,17 @@ const variantStyles = {
 export default function InlineError({
   message,
   onRetry,
-  isDark: themeIsDark,
+  isDark: isDarkProp,
   variant = 'error',
 }: InlineErrorProps) {
-  const systemIsDark = useColorScheme() === 'dark';
-  const isDark = themeIsDark ?? systemIsDark;
-  const colors = variantStyles[variant];
+  // D3: Use ThemeContext as the authoritative dark/light signal.
+  // Caller can override via isDark prop for backwards compatibility.
+  const { resolvedMode } = useTheme();
+  const isDark = isDarkProp ?? resolvedMode === 'dark';
+  const vs = variantStyles[variant];
 
-  const color = isDark ? colors.darkText : colors.lightText;
-  const background = isDark ? colors.darkBg : colors.lightBg;
+  const color = isDark ? vs.darkText : vs.lightText;
+  const background = isDark ? vs.darkBg : vs.lightBg;
 
   return (
     <View
@@ -68,7 +69,7 @@ export default function InlineError({
     >
       <View style={styles.content}>
         <MaterialCommunityIcons
-          name={colors.icon}
+          name={vs.icon}
           size={20}
           color={color}
           accessible={false}

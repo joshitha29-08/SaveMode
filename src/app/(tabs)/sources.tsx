@@ -1,30 +1,31 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
   View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { supabase } from '../../lib/supabase';
+import { useSafeSave } from '../../lib/useSafeSave';
+import { useAppTheme } from '../../lib/theme';
+import { useSession } from '../../lib/session';
+import { t } from '../../i18n';
+import { formatAmount } from '../../lib/money';
+import OfflineBanner from '../../components/ui/OfflineBanner';
+import EmptyState from '../../components/ui/EmptyState';
+import Toast from '../../components/ui/Toast';
+import ConfirmSheet from '../../components/ui/ConfirmSheet';
+import { ErrorBox } from '../../components/ui/ErrorBox';
 import SourceForm, {
   type SourceItem,
   type SourceType,
 } from '../../components/sources/SourceForm';
-import ConfirmSheet from '../../components/ui/ConfirmSheet';
-import EmptyState from '../../components/ui/EmptyState';
-import OfflineBanner from '../../components/ui/OfflineBanner';
-import Toast from '../../components/ui/Toast';
 import { Colors } from '../../constants/colors';
-import { t } from '../../i18n';
-import { formatAmount } from '../../lib/money';
-import { useSession } from '../../lib/session';
-import { supabase } from '../../lib/supabase';
-import { useAppTheme } from '../../lib/theme';
-import { useSafeSave } from '../../lib/useSafeSave';
 
 type SourceTotals = {
   bankCashTotal: number;
@@ -103,30 +104,17 @@ export default function SourcesScreen() {
       const { data: totalsData, error: totalsError } =
         await supabase.rpc('source_totals');
 
-      if (!totalsError && totalsData && totalsData.length > 0) {
-        const row = totalsData[0];
-        setTotals({
-          bankCashTotal: Number(row.bank_cash_total ?? 0),
-          cardOutstandingTotal: Number(row.card_outstanding_total ?? 0),
-        });
-      } else {
-        // Fallback calculation from active sources
-        let bankCash = 0;
-        let cardOut = 0;
-        for (const s of fetchedSources) {
-          if (!s.is_archived) {
-            if (s.type === 'card') {
-              cardOut += Number(s.current_amount);
-            } else {
-              bankCash += Number(s.current_amount);
-            }
-          }
-        }
-        setTotals({
-          bankCashTotal: bankCash,
-          cardOutstandingTotal: cardOut,
-        });
+      if (totalsError || !totalsData || totalsData.length === 0) {
+        // D10: Prohibit client-side totals fallback. On DB failure, set listError
+        setListError(t('err.generic'));
+        return;
       }
+
+      const row = totalsData[0];
+      setTotals({
+        bankCashTotal: Number(row.bank_cash_total ?? 0),
+        cardOutstandingTotal: Number(row.card_outstanding_total ?? 0),
+      });
     } catch {
       setListError(t('err.generic'));
     }
@@ -459,17 +447,9 @@ export default function SourcesScreen() {
         </View>
       </View>
 
-      {/* Error state */}
+      {/* Error state (D10) */}
       {!!listError && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{listError}</Text>
-          <Pressable
-            onPress={loadData}
-            style={[styles.retryBtn, { backgroundColor: Colors.primary }]}
-          >
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </Pressable>
-        </View>
+        <ErrorBox message={listError} onRetry={loadData} isDark={isDark} />
       )}
 
       {/* Loading state */}

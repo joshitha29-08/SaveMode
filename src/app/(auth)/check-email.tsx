@@ -1,23 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../lib/useNetworkStatus';
+import { useTheme } from '../../theme/theme-context';
 import OfflineBanner from '../../components/ui/OfflineBanner';
 import { VERIFY_REDIRECT_URL } from '../../constants/urls';
+import { t } from '../../i18n';
 
 export default function CheckEmail() {
   const params = useLocalSearchParams<{ email?: string | string[] }>();
-  const email = Array.isArray(params.email)
-    ? params.email[0]
-    : params.email;
+  const email = Array.isArray(params.email) ? params.email[0] : params.email;
 
   const { isOnline } = useNetworkStatus();
+  const { colors } = useTheme();
   const sendingRef = useRef(false);
 
   const [seconds, setSeconds] = useState(60);
@@ -40,7 +36,7 @@ export default function CheckEmail() {
     setMessage('');
 
     if (!isOnline) {
-      setMessage('Connect to the internet to resend the email.');
+      setMessage(t('info.offline.save'));
       return;
     }
 
@@ -57,14 +53,12 @@ export default function CheckEmail() {
       });
 
       if (error) {
-        setMessage('Unable to resend the email. Please try again later.');
+        setMessage(t('err.generic'));
       } else {
-        setMessage(
-          'If the address needs verifying, a new link is on its way.',
-        );
+        setMessage(t('info.resend.sent'));
       }
     } catch {
-      setMessage('Unable to resend the email. Please try again later.');
+      setMessage(t('err.generic'));
     } finally {
       sendingRef.current = false;
       setLoading(false);
@@ -73,22 +67,25 @@ export default function CheckEmail() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <OfflineBanner visible={!isOnline} />
 
-      <Text style={styles.icon}>✉</Text>
-      <Text style={styles.title}>Check your email</Text>
-
-      <Text style={styles.message}>
-        Check your inbox. If {email || 'your email'} needs verifying, a link
-        is on its way. Already verified? Log in.
+      <Text style={[styles.icon, { color: colors.primary }]}>✉</Text>
+      <Text style={[styles.title, { color: colors.text }]}>
+        Check your email
       </Text>
 
-      {!!email && <Text style={styles.email}>{email}</Text>}
+      <Text style={[styles.message, { color: colors.textSecondary }]}>
+        {t('info.signup.check', { email: email || 'your email' })}
+      </Text>
+
+      {!!email && (
+        <Text style={[styles.email, { color: colors.text }]}>{email}</Text>
+      )}
 
       {message ? (
         <Text
-          style={styles.feedback}
+          style={[styles.feedback, { color: colors.primary }]}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
@@ -99,6 +96,7 @@ export default function CheckEmail() {
       <Pressable
         style={[
           styles.button,
+          { backgroundColor: colors.primary },
           (seconds > 0 || loading || !isOnline || !email) && styles.disabled,
         ]}
         onPress={resendEmail}
@@ -109,7 +107,7 @@ export default function CheckEmail() {
           busy: loading,
         }}
       >
-        <Text style={styles.buttonText}>
+        <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
           {loading
             ? 'Sending...'
             : seconds > 0
@@ -118,11 +116,17 @@ export default function CheckEmail() {
         </Text>
       </Pressable>
 
-      <Link href="/(auth)/signup" style={styles.link}>
+      <Link
+        href="/(auth)/signup"
+        style={[styles.link, { color: colors.primary }]}
+      >
         Use a different email
       </Link>
 
-      <Link href="/(auth)/login" style={styles.link}>
+      <Link
+        href="/(auth)/login"
+        style={[styles.link, { color: colors.primary }]}
+      >
         Go to log in
       </Link>
     </View>
@@ -136,30 +140,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 28,
     gap: 20,
-    backgroundColor: '#FFFFFF',
   },
   icon: { fontSize: 48 },
-  title: { fontSize: 30, fontWeight: '700', color: '#111111' },
+  title: { fontSize: 30, fontWeight: '700' },
   message: {
     fontSize: 16,
-    color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
   },
-  email: { fontWeight: '700', color: '#111111' },
+  email: { fontWeight: '700' },
   feedback: {
-    color: '#2457C5',
     textAlign: 'center',
     lineHeight: 22,
+    fontWeight: '500',
   },
   button: {
-    backgroundColor: '#111111',
     padding: 16,
     borderRadius: 10,
     width: '100%',
     alignItems: 'center',
   },
   disabled: { opacity: 0.45 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700' },
-  link: { color: '#2563EB', fontWeight: '600' },
+  buttonText: { fontWeight: '700', fontSize: 16 },
+  link: { fontWeight: '600' },
 });

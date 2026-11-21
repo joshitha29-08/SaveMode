@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,9 +5,9 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from 'react-native';
 import { t } from '../../i18n';
+import { useTheme } from '../../theme/theme-context';
 
 type LoadingStateProps = {
   onRetry?: () => void;
@@ -19,11 +18,11 @@ export default function LoadingState({
   onRetry,
   spinnerSize = 'large',
 }: LoadingStateProps) {
-  const isDark = useColorScheme() === 'dark';
+  const { colors } = useTheme();
   const [isSlow, setIsSlow] = useState(false);
 
-  const textColor = isDark ? '#FFFFFF' : '#222222';
-  const skeletonColor = isDark ? '#444444' : '#E5E5E5';
+  const textColor = colors.text;
+  const skeletonColor = colors.surfaceSecondary;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,17 +38,9 @@ export default function LoadingState({
       accessibilityRole="progressbar"
       accessibilityLabel={t('loading.label')}
     >
-      <ActivityIndicator
-        size={spinnerSize}
-        color={textColor}
-      />
+      <ActivityIndicator size={spinnerSize} color={colors.primary} />
 
-      <View
-        style={[
-          styles.skeleton,
-          { backgroundColor: skeletonColor },
-        ]}
-      />
+      <View style={[styles.skeleton, { backgroundColor: skeletonColor }]} />
       <View
         style={[
           styles.skeleton,
@@ -73,9 +64,7 @@ export default function LoadingState({
               accessibilityLabel={t('action.retry')}
               style={styles.retryButton}
             >
-              <Text style={styles.retryText}>
-                {t('action.retry')}
-              </Text>
+              <Text style={styles.retryText}>{t('action.retry')}</Text>
             </Pressable>
           )}
         </View>
@@ -109,7 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   retryText: {
-    color: '#2457C5',
+    color: '#0F6E56',
     fontSize: 14,
     fontWeight: '600',
   },

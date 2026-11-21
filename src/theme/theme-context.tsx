@@ -25,7 +25,8 @@ type ThemeContextValue = {
   isReady: boolean;
 };
 
-const STORAGE_KEY = '@savemode/theme-mode';
+const STORAGE_KEY = '@app/theme-mode';
+const LEGACY_STORAGE_KEY = '@savemode/theme-mode';
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
@@ -44,7 +45,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     async function loadThemeMode() {
       try {
-        const savedMode = await AsyncStorage.getItem(STORAGE_KEY);
+        const savedMode =
+          (await AsyncStorage.getItem(STORAGE_KEY)) ||
+          (await AsyncStorage.getItem(LEGACY_STORAGE_KEY));
 
         if (
           isActive &&

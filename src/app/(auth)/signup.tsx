@@ -10,12 +10,15 @@ import {
 import { Link, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useNetworkStatus } from '../../lib/useNetworkStatus';
+import { useTheme } from '../../theme/theme-context';
 import OfflineBanner from '../../components/ui/OfflineBanner';
 import { VERIFY_REDIRECT_URL } from '../../constants/urls';
+import { t } from '../../i18n';
 
 export default function Signup() {
   const router = useRouter();
   const { isOnline } = useNetworkStatus();
+  const { colors } = useTheme();
   const submitting = useRef(false);
 
   const [name, setName] = useState('');
@@ -28,10 +31,10 @@ export default function Signup() {
   const hasLength = password.length >= 8 && password.length <= 64;
   const hasLetter = /[A-Za-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
-  const validCharacters = /^[\x21-\x7E]+$/.test(password);
+  // AUTH-03, EC-AUTH-10: spaces are allowed in passwords (\x20 to \x7E)
+  const validCharacters = /^[\x20-\x7E]+$/.test(password);
 
-  const validPassword =
-    hasLength && hasLetter && hasNumber && validCharacters;
+  const validPassword = hasLength && hasLetter && hasNumber && validCharacters;
 
   async function handleSignup() {
     if (submitting.current) return;
@@ -42,12 +45,12 @@ export default function Signup() {
     const cleanEmail = email.trim();
 
     if (!isOnline) {
-      setMessage('Connect to the internet to sign up.');
+      setMessage(t('info.offline.save'));
       return;
     }
 
     if (!cleanName || !cleanEmail || !password) {
-      setMessage('Please complete all fields.');
+      setMessage(t('err.required'));
       return;
     }
 
@@ -60,17 +63,17 @@ export default function Signup() {
       cleanEmail.length > 254 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
     ) {
-      setMessage('Enter a valid email address.');
+      setMessage(t('err.email.invalid'));
       return;
     }
 
     if (!validCharacters) {
-      setMessage('Use only English letters, numbers and keyboard symbols.');
+      setMessage(t('err.password.chars'));
       return;
     }
 
     if (!validPassword) {
-      setMessage('Use 8–64 characters, at least one letter and one number.');
+      setMessage(t('err.password.rule'));
       return;
     }
 
@@ -88,7 +91,7 @@ export default function Signup() {
       });
 
       if (error) {
-        setMessage('Unable to create your account. Please try again.');
+        setMessage(t('err.generic'));
         return;
       }
 
@@ -97,7 +100,7 @@ export default function Signup() {
         params: { email: cleanEmail },
       });
     } catch {
-      setMessage('Something went wrong. Please try again.');
+      setMessage(t('err.generic'));
     } finally {
       submitting.current = false;
       setLoading(false);
@@ -105,17 +108,27 @@ export default function Signup() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+    >
       <OfflineBanner visible={!isOnline} />
 
-      <Text style={styles.title}>Create your account</Text>
-      <Text style={styles.subtitle}>
-        Start managing your money with SaveMode.
+      <Text style={[styles.title, { color: colors.text }]}>
+        Create your account
+      </Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Start managing your money with {t('app.name')}.
       </Text>
 
       {message ? (
         <Text
-          style={styles.error}
+          style={[
+            styles.error,
+            { backgroundColor: colors.error + '18', color: colors.error },
+          ]}
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
@@ -124,8 +137,16 @@ export default function Signup() {
       ) : null}
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.border,
+            color: colors.text,
+          },
+        ]}
         placeholder="Full name"
+        placeholderTextColor={colors.textMuted}
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
@@ -135,8 +156,16 @@ export default function Signup() {
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.border,
+            color: colors.text,
+          },
+        ]}
         placeholder="Email address"
+        placeholderTextColor={colors.textMuted}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -147,10 +176,19 @@ export default function Signup() {
         accessibilityLabel="Email address"
       />
 
-      <View style={styles.passwordRow}>
+      <View
+        style={[
+          styles.passwordRow,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.border,
+          },
+        ]}
+      >
         <TextInput
-          style={styles.passwordInput}
+          style={[styles.passwordInput, { color: colors.text }]}
           placeholder="Password"
+          placeholderTextColor={colors.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
@@ -166,51 +204,90 @@ export default function Signup() {
           accessibilityRole="button"
           accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
         >
-          <Text style={styles.showText}>
+          <Text style={[styles.showText, { color: colors.primary }]}>
             {showPassword ? 'Hide' : 'Show'}
           </Text>
         </Pressable>
       </View>
 
-      <View style={styles.checklist}>
-        <Text style={styles.checkTitle}>Password requirements</Text>
-        <Text style={hasLength ? styles.valid : styles.invalid}>
+      <View
+        style={[styles.checklist, { backgroundColor: colors.surfaceSecondary }]}
+      >
+        <Text style={[styles.checkTitle, { color: colors.text }]}>
+          Password requirements
+        </Text>
+        <Text
+          style={
+            hasLength ? { color: colors.success } : { color: colors.textMuted }
+          }
+        >
           {hasLength ? '✓' : '○'} 8–64 characters
         </Text>
-        <Text style={hasLetter ? styles.valid : styles.invalid}>
+        <Text
+          style={
+            hasLetter ? { color: colors.success } : { color: colors.textMuted }
+          }
+        >
           {hasLetter ? '✓' : '○'} At least one letter
         </Text>
-        <Text style={hasNumber ? styles.valid : styles.invalid}>
+        <Text
+          style={
+            hasNumber ? { color: colors.success } : { color: colors.textMuted }
+          }
+        >
           {hasNumber ? '✓' : '○'} At least one number
         </Text>
-        <Text style={validCharacters ? styles.valid : styles.invalid}>
-          {validCharacters ? '✓' : '○'} English letters and keyboard symbols only
+        <Text
+          style={
+            validCharacters
+              ? { color: colors.success }
+              : { color: colors.textMuted }
+          }
+        >
+          {validCharacters ? '✓' : '○'} English letters, numbers and symbols
         </Text>
       </View>
 
       <Pressable
-        style={[styles.button, (loading || !isOnline) && styles.disabled]}
+        style={[
+          styles.button,
+          { backgroundColor: colors.primary },
+          (loading || !isOnline) && styles.disabled,
+        ]}
         onPress={handleSignup}
         disabled={loading || !isOnline}
         accessibilityRole="button"
         accessibilityState={{ disabled: loading || !isOnline, busy: loading }}
       >
-        <Text style={styles.buttonText}>
+        <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
           {loading ? 'Creating account...' : 'Sign up'}
         </Text>
       </Pressable>
 
-      <Text style={styles.footer}>
+      <Text style={[styles.footer, { color: colors.textMuted }]}>
         Already have an account?{' '}
-        <Link href="/(auth)/login" style={styles.link}>
+        <Link
+          href="/(auth)/login"
+          style={[styles.link, { color: colors.primary }]}
+        >
           Log in
         </Link>
       </Text>
 
       <View style={styles.legal}>
-        <Link href="/terms" style={styles.link}>Terms</Link>
-        <Text style={styles.footer}> · </Text>
-        <Link href="/privacy" style={styles.link}>Privacy Policy</Link>
+        <Link
+          href="/(public)/terms"
+          style={[styles.link, { color: colors.primary }]}
+        >
+          Terms
+        </Link>
+        <Text style={[styles.footer, { color: colors.textMuted }]}> · </Text>
+        <Link
+          href="/(public)/privacy"
+          style={[styles.link, { color: colors.primary }]}
+        >
+          Privacy Policy
+        </Link>
       </View>
     </ScrollView>
   );
@@ -222,29 +299,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#FFFFFF',
   },
-  title: { fontSize: 30, fontWeight: '700', color: '#111111' },
-  subtitle: { fontSize: 15, color: '#666666' },
+  title: { fontSize: 30, fontWeight: '700' },
+  subtitle: { fontSize: 15 },
   error: {
-    color: '#B42318',
-    backgroundColor: '#FEF3F2',
     padding: 12,
     borderRadius: 8,
+    fontSize: 14,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
-    color: '#111111',
   },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#DDDDDD',
     borderRadius: 10,
     paddingHorizontal: 15,
   },
@@ -252,27 +324,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 15,
     fontSize: 16,
-    color: '#111111',
   },
-  showText: { color: '#2563EB', fontWeight: '600' },
+  showText: { fontWeight: '600' },
   checklist: {
     gap: 8,
     padding: 12,
-    backgroundColor: '#F7F7F7',
     borderRadius: 10,
   },
-  checkTitle: { fontWeight: '700', color: '#222222' },
-  valid: { color: '#16834A' },
-  invalid: { color: '#777777' },
+  checkTitle: { fontWeight: '700' },
   button: {
-    backgroundColor: '#111111',
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
   },
   disabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  footer: { textAlign: 'center', color: '#555555' },
-  link: { color: '#2563EB', fontWeight: '600' },
+  buttonText: { fontSize: 16, fontWeight: '700' },
+  footer: { textAlign: 'center' },
+  link: { fontWeight: '600' },
   legal: { flexDirection: 'row', justifyContent: 'center' },
 });

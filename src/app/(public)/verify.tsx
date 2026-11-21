@@ -9,6 +9,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../theme/theme-context';
+import { t } from '../../i18n';
 
 type VerifyStatus = 'loading' | 'verified' | 'failed';
 
@@ -22,6 +24,7 @@ export default function VerifyEmail() {
   }>();
 
   const router = useRouter();
+  const { colors } = useTheme();
   const verificationPromise = useRef<Promise<boolean> | null>(null);
 
   const rawTokenHash = params.token_hash ?? params.token;
@@ -51,9 +54,7 @@ export default function VerifyEmail() {
         if (active) {
           setStatus('failed');
           setErrorMessage(
-            errorDesc
-              ? decodeURIComponent(errorDesc)
-              : 'Verification link is invalid or expired.',
+            errorDesc ? decodeURIComponent(errorDesc) : t('info.link.expired'),
           );
         }
         return;
@@ -72,7 +73,7 @@ export default function VerifyEmail() {
             setErrorMessage(
               hashErrorDesc
                 ? decodeURIComponent(hashErrorDesc)
-                : 'Verification link is invalid or expired.',
+                : t('info.link.expired'),
             );
           }
           return;
@@ -96,29 +97,48 @@ export default function VerifyEmail() {
         }
       }
 
-      // 3. If token_hash / token is present, call verifyOtp
+      // 3. If token_hash / token is present, validate type and call verifyOtp
       if (tokenHash) {
+        // Validate type URL parameter: only 'email' and 'signup' are valid for this route
+        if (typeParam && typeParam !== 'email' && typeParam !== 'signup') {
+          if (active) {
+            setStatus('failed');
+            setErrorMessage(t('info.link.expired'));
+          }
+          return;
+        }
+
         const otpType: EmailOtpType =
           typeParam === 'email' ? 'email' : 'signup';
 
         verificationPromise.current ??= (async () => {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: otpType,
-          });
-
-          if (!error) return true;
-
-          // If signup failed and type was not explicit, try 'email' fallback
-          if (!typeParam && otpType === 'signup') {
-            const retry = await supabase.auth.verifyOtp({
+          try {
+            const { error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
-              type: 'email',
+              type: otpType,
             });
-            return !retry.error;
-          }
 
-          return false;
+            if (!error) return true;
+
+            // If signup failed and type was not explicit, try 'email' fallback
+            if (!typeParam && otpType === 'signup') {
+              const { error: fallbackError } = await supabase.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: 'email',
+              });
+              if (!fallbackError) return true;
+              setErrorMessage(fallbackError.message ?? t('info.link.expired'));
+              return false;
+            }
+
+            // Set Supabase error message
+            setErrorMessage(error.message ?? t('info.link.expired'));
+            return false;
+          } catch (e: any) {
+            // Unexpected error handling
+            setErrorMessage(e?.message ?? t('verify.unexpected_error'));
+            return false;
+          }
         })();
 
         const verified = await verificationPromise.current;
@@ -126,9 +146,7 @@ export default function VerifyEmail() {
         if (active) {
           setStatus(verified ? 'verified' : 'failed');
           if (!verified) {
-            setErrorMessage(
-              'This verification link has expired or already been used.',
-            );
+            setErrorMessage(t('info.link.expired'));
           }
         }
         return;
@@ -148,9 +166,7 @@ export default function VerifyEmail() {
       // 5. No token or active session found
       if (active) {
         setStatus('failed');
-        setErrorMessage(
-          'No verification token found. Please check the link from your email.',
-        );
+        setErrorMessage(t('info.link.expired'));
       }
     }
 
@@ -172,34 +188,38 @@ export default function VerifyEmail() {
   }, [status, router]);
 
   return (
-    <View style={styles.container}>
-      {status === 'loading' && <ActivityIndicator size="large" color="#0F6E56" />}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {status === 'loading' && (
+        <ActivityIndicator size="large" color={colors.primary} />
+      )}
 
       <Text
-        style={styles.title}
+        style={[styles.title, { color: colors.text }]}
         accessibilityRole="header"
         accessibilityLiveRegion="polite"
       >
         {status === 'loading'
-          ? 'Verifying your email...'
+          ? t('verify.loading')
           : status === 'verified'
-            ? 'Your email has been successfully verified!'
-            : 'Email verification failed'}
+            ? t('info.verified')
+            : t('verify.failed')}
       </Text>
 
       {status === 'failed' && (
         <>
-          <Text style={styles.subtitle}>
-            {errorMessage || 'This verification link has expired or is invalid.'}
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            {errorMessage || t('info.link.expired')}
           </Text>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Go to log in"
+            accessibilityLabel={t('verify.go_to_login')}
             onPress={() => router.replace('/(auth)/login')}
-            style={styles.button}
+            style={[styles.button, { backgroundColor: colors.primary }]}
           >
-            <Text style={styles.buttonText}>Go to log in</Text>
+            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+              {t('verify.go_to_login')}
+            </Text>
           </Pressable>
         </>
       )}
@@ -214,23 +234,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     gap: 16,
-    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111111',
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
-    color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 360,
   },
   button: {
-    backgroundColor: '#0F6E56',
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 10,
@@ -240,7 +256,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

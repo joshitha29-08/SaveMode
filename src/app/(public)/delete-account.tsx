@@ -1,11 +1,5 @@
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function DeleteAccountInfo() {
   const router = useRouter();
@@ -14,10 +8,11 @@ export default function DeleteAccountInfo() {
     <ScrollView contentContainerStyle={styles.container}>
       <Stack.Screen options={{ title: 'Delete Account' }} />
 
-      <Text style={styles.title}>How to Delete Your SaveMode Account</Text>
+      <Text style={styles.updated}>Last updated: 21 November 2026</Text>
       <Text style={styles.subtitle}>
-        In compliance with Google Play and privacy regulations, SaveMode provides
-        a simple and permanent way to delete your account and all associated data.
+        In compliance with Google Play and privacy regulations, SaveMode
+        provides a simple and permanent way to delete your account and all
+        associated data.
       </Text>
 
       <View style={styles.section}>
@@ -44,10 +39,18 @@ export default function DeleteAccountInfo() {
           When you delete your account, all of your data is permanently removed
           from our database, including:
         </Text>
-        <Text style={styles.bullet}>• Your user profile, name, and email address</Text>
-        <Text style={styles.bullet}>• All financial sources (bank accounts, cash, credit cards)</Text>
-        <Text style={styles.bullet}>• All transaction records and expense history</Text>
-        <Text style={styles.bullet}>• All custom categories, tags, and preferences</Text>
+        <Text style={styles.bullet}>
+          • Your user profile, name, and email address
+        </Text>
+        <Text style={styles.bullet}>
+          • All financial sources (bank accounts, cash, credit cards)
+        </Text>
+        <Text style={styles.bullet}>
+          • All transaction records and expense history
+        </Text>
+        <Text style={styles.bullet}>
+          • All custom categories, tags, and preferences
+        </Text>
         <Text style={styles.note}>
           This action is permanent and cannot be undone. We do not retain any
           copies of your financial data after account deletion.
@@ -58,9 +61,10 @@ export default function DeleteAccountInfo() {
         <Text style={styles.heading}>Cannot Access the App?</Text>
         <Text style={styles.body}>
           If you have uninstalled the app or forgot your password, you can reset
-          your password using our Forgot Password page, log in below, and proceed
-          with deletion. Alternatively, you can email our support team with your
-          registered email address to request manual account deletion within 30 days.
+          your password using our Forgot Password page, log in below, and
+          proceed with deletion. Alternatively, you can email our support team
+          with your registered email address to request manual account deletion
+          within 30 days.
         </Text>
       </View>
 
@@ -87,6 +91,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111111',
     marginBottom: 8,
+  },
+  updated: {
+    fontSize: 13,
+    color: '#666666',
+    marginBottom: 16,
   },
   subtitle: {
     fontSize: 15,

@@ -6,6 +6,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY!;
 
+console.log(
+  'Supabase URL loaded:',
+  Boolean(supabaseUrl),
+  'URL length:',
+  supabaseUrl?.length,
+);
+
 const webStorage = {
   getItem: async (key: string) => {
     if (typeof window === 'undefined') return null;
